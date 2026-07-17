@@ -1,0 +1,238 @@
+"""JSON-based agent configuration system."""
+
+import json
+import logging
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from .base_agent import BaseAgent
+
+logger = logging.getLogger(__name__)
+
+
+class JSONAgent(BaseAgent):
+    """Agent configured from a JSON file."""
+
+    def __init__(self, json_path: str):
+        """Initialize agent from JSON file.
+
+        Args:
+            json_path: Path to the JSON configuration file.
+        """
+        super().__init__()
+        self.json_path = json_path
+        self._config = self._load_config()
+        self._validate_config()
+
+    def _load_config(self) -> Dict:
+        """Load configuration from JSON file."""
+        try:
+            with open(self.json_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError) as e:
+            raise ValueError(
+                f"Failed to load JSON agent config from {self.json_path}: {e}"
+            ) from e
+
+    def _validate_config(self) -> None:
+        """Validate required fields in configuration."""
+        required_fields = ["name", "description", "system_prompt", "tools"]
+        for field in required_fields:
+            if field not in self._config:
+                raise ValueError(
+                    f"Missing required field '{field}' in JSON agent config: {self.json_path}"
+                )
+
+        # Validate tools is a list
+        if not isinstance(self._config["tools"], list):
+            raise ValueError(
+                f"'tools' must be a list in JSON agent config: {self.json_path}"
+            )
+
+        # Validate system_prompt is string or list
+        system_prompt = self._config["system_prompt"]
+        if not isinstance(system_prompt, (str, list)):
+            raise ValueError(
+                f"'system_prompt' must be a string or list in JSON agent config: {self.json_path}"
+            )
+
+        # Validate optional mcp_servers field. Accept either:
+        #   - list[str]  -> shorthand, each defaults to auto_start=True
+        #   - dict[str, dict]  -> per-server options (e.g. {"auto_start": false})
+        # Anything else is a config error so users get a clear message.
+        if "mcp_servers" in self._config:
+            mcp_servers = self._config["mcp_servers"]
+            if isinstance(mcp_servers, list):
+                for entry in mcp_servers:
+                    if not isinstance(entry, str):
+                        raise ValueError(
+                            f"'mcp_servers' list entries must be strings (server names) in "
+                            f"JSON agent config: {self.json_path}"
+                        )
+            elif isinstance(mcp_servers, dict):
+                for server_name, opts in mcp_servers.items():
+                    if not isinstance(server_name, str):
+                        raise ValueError(
+                            f"'mcp_servers' keys must be strings in JSON agent config: "
+                            f"{self.json_path}"
+                        )
+                    if not isinstance(opts, dict):
+                        raise ValueError(
+                            f"'mcp_servers[{server_name!r}]' must be a dict of options "
+                            f'(e.g. {{"auto_start": true}}) in JSON agent config: '
+                            f"{self.json_path}"
+                        )
+            else:
+                raise ValueError(
+                    f"'mcp_servers' must be a list of names or a dict of "
+                    f"{{name: options}} in JSON agent config: {self.json_path}"
+                )
+
+    @property
+    def name(self) -> str:
+        """Get agent name from JSON config."""
+        return self._config["name"]
+
+    @property
+    def display_name(self) -> str:
+        """Get display name from JSON config, fallback to name with emoji."""
+        return self._config.get("display_name", f"{self.name.title()} 🤖")
+
+    @property
+    def description(self) -> str:
+        """Get description from JSON config."""
+        return self._config["description"]
+
+    def get_system_prompt(self) -> str:
+        """Get system prompt from JSON config."""
+        system_prompt = self._config["system_prompt"]
+
+        # If it's a list, join with newlines
+        if isinstance(system_prompt, list):
+            return "\n".join(system_prompt)
+
+        return system_prompt
+
+    def get_available_tools(self) -> List[str]:
+        """Get available tools from JSON config."""
+        from fid_coder.tools import get_available_tool_names
+
+        available_tools = get_available_tool_names()
+        return [tool for tool in self._config["tools"] if tool in available_tools]
+
+    def get_user_prompt(self) -> Optional[str]:
+        """Get custom user prompt from JSON config."""
+        return self._config.get("user_prompt")
+
+    def get_tools_config(self) -> Optional[Dict]:
+        """Get tool configuration from JSON config."""
+        return self._config.get("tools_config")
+
+    def get_declared_mcp_bindings(self) -> Dict[str, Dict[str, Any]]:
+        """Return MCP bindings declared in the JSON config, normalized.
+
+        The ``mcp_servers`` field accepts two shapes for ergonomics:
+
+        * ``["serena", "puppeteer"]`` -- list shorthand; each entry
+          defaults to ``auto_start=True`` (matching the bindings menu's
+          default — the obvious intent when you list a server).
+        * ``{"serena": {"auto_start": true}, "puppeteer": {"auto_start": false}}``
+          -- explicit per-server options.
+
+        Both are normalized here to ``{name: {"auto_start": bool}}`` so the
+        rest of the system only ever deals with one shape. Returns ``{}``
+        when the field is absent.
+        """
+        raw = self._config.get("mcp_servers")
+        if raw is None:
+            return {}
+
+        normalized: Dict[str, Dict[str, Any]] = {}
+        if isinstance(raw, list):
+            for name in raw:
+                normalized[name] = {"auto_start": True}
+        elif isinstance(raw, dict):
+            for name, opts in raw.items():
+                normalized[name] = {
+                    "auto_start": bool(opts.get("auto_start", True)),
+                }
+        # Any other shape was rejected at validation time; defensive no-op.
+        return normalized
+
+    def refresh_config(self) -> None:
+        """Reload the agent configuration from disk.
+
+        This keeps long-lived agent instances in sync after external edits.
+        """
+        self._config = self._load_config()
+        self._validate_config()
+
+    def get_model_name(self) -> Optional[str]:
+        """Get the effective model name for this JSON agent.
+
+        A runtime override is deliberately checked first so orchestrators can
+        choose a model for one invocation without editing the JSON file.
+        """
+        override = self.get_runtime_model_name_override()
+        if override:
+            return override
+
+        result = self._config.get("model")
+        if result is None or (isinstance(result, str) and not result.strip()):
+            result = super().get_model_name()
+        return result
+
+
+def discover_json_agents() -> Dict[str, str]:
+    """Discover JSON agent files in the user's and project's agents directories.
+
+    Searches two locations:
+    1. User agents directory (~/.fid_coder/agents/)
+    2. Project agents directory (<CWD>/.fid_coder/agents/) - if it exists
+
+    Project agents take priority over user agents when names collide.
+
+    Returns:
+        Dict mapping agent names to their JSON file paths.
+    """
+    from fid_coder.config import (
+        get_project_agents_directory,
+        get_user_agents_directory,
+    )
+
+    agents: Dict[str, str] = {}
+
+    # 1. Discover user-level agents first
+    user_agents_dir = Path(get_user_agents_directory())
+    if user_agents_dir.exists() and user_agents_dir.is_dir():
+        for json_file in user_agents_dir.glob("*.json"):
+            try:
+                agent = JSONAgent(str(json_file))
+                agents[agent.name] = str(json_file)
+            except Exception as e:
+                logger.debug(
+                    "Skipping invalid user agent file: %s (reason: %s: %s)",
+                    json_file,
+                    type(e).__name__,
+                    str(e),
+                )
+                continue
+
+    # 2. Discover project-level agents (overrides user agents on name collision)
+    project_agents_dir_str = get_project_agents_directory()
+    if project_agents_dir_str is not None:
+        project_agents_dir = Path(project_agents_dir_str)
+        for json_file in project_agents_dir.glob("*.json"):
+            try:
+                agent = JSONAgent(str(json_file))
+                agents[agent.name] = str(json_file)
+            except Exception as e:
+                logger.debug(
+                    "Skipping invalid project agent file: %s (reason: %s: %s)",
+                    json_file,
+                    type(e).__name__,
+                    str(e),
+                )
+                continue
+
+    return agents

@@ -1,0 +1,516 @@
+"""
+ManagedMCPServer wrapper class implementation.
+
+This module provides a managed wrapper around pydantic-ai MCP server classes
+that adds management capabilities while maintaining 100% compatibility.
+"""
+
+import os
+import uuid
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any, Dict, Optional, Union
+
+import httpx
+from pydantic_ai import RunContext
+from pydantic_ai.mcp import (
+    CallToolFunc,
+    MCPServerSSE,
+    MCPServerStdio,
+    MCPServerStreamableHTTP,
+    ToolResult,
+)
+
+from fid_coder.http_utils import create_async_client, get_cert_bundle_path
+from fid_coder.mcp_.blocking_startup import BlockingMCPServerStdio
+from fid_coder.mcp_.tool_arg_coercion import coerce_tool_args
+
+
+def _expand_env_vars(value: Any) -> Any:
+    """
+    Recursively expand environment variables in config values.
+
+    Supports $VAR and ${VAR} syntax. Works with:
+    - Strings: expands env vars
+    - Dicts: recursively expands all string values
+    - Lists: recursively expands all string elements
+    - Other types: returned as-is
+
+    Args:
+        value: The value to expand env vars in
+
+    Returns:
+        The value with env vars expanded
+    """
+    if isinstance(value, str):
+        return os.path.expandvars(value)
+    elif isinstance(value, dict):
+        return {k: _expand_env_vars(v) for k, v in value.items()}
+    elif isinstance(value, list):
+        return [_expand_env_vars(item) for item in value]
+    return value
+
+
+def _build_tool_prefix(server_name: str, config: Dict[str, Any]) -> str:
+    """Build the pydantic-ai MCP tool prefix for a configured server."""
+    configured_prefix = _expand_env_vars(config.get("tool_prefix"))
+    if configured_prefix:
+        return f"{server_name}_{configured_prefix}"
+    return server_name
+
+
+def _with_inherited_ca_bundle(
+    env: Optional[Dict[str, str]],
+) -> Optional[Dict[str, str]]:
+    """Propagate our CA bundle into a stdio server's child environment.
+
+    A stdio MCP server is a subprocess (often ``uvx``/``npx`` launching a
+    Python or Node program) that makes its own HTTPS calls. pydantic-ai's
+    ``MCPServerStdio`` does NOT pass fid_coder's environment to that child
+    -- it runs with only the ``env`` dict we hand it (plus a minimal set the
+    MCP SDK adds back). So a ``SSL_CERT_FILE`` that lets fid_coder itself
+    reach the internet (see ``get_cert_bundle_path``) never reaches the
+    child, and the child falls back to certifi's bundle.
+
+    Behind a corporate TLS-interception proxy (Zscaler/Netskope/etc.) that
+    certifi bundle is missing the proxy's private root, so the child dies on
+    its first request with::
+
+        ssl.SSLCertVerificationError: [SSL: CERTIFICATE_VERIFY_FAILED]
+        self-signed certificate in certificate chain
+
+    even though fid_coder, curl, and the browser all work. This copies our
+    resolved bundle into the child env as ``SSL_CERT_FILE`` (honored by
+    Python's ``ssl``) and ``REQUESTS_CA_BUNDLE`` (honored by ``requests`` and
+    friends), so the child trusts exactly what the parent trusts.
+
+    It is additive and non-destructive: a value the user already set in the
+    server's ``env`` config always wins, and if no bundle is resolvable we
+    return ``env`` unchanged. We never disable verification.
+    """
+    bundle = get_cert_bundle_path()
+    if not bundle:
+        return env
+    out: Dict[str, str] = dict(env or {})
+    out.setdefault("SSL_CERT_FILE", bundle)
+    out.setdefault("REQUESTS_CA_BUNDLE", bundle)
+    return out
+
+
+class ServerState(Enum):
+    """Enumeration of possible server states."""
+
+    STOPPED = "stopped"
+    STARTING = "starting"
+    RUNNING = "running"
+    STOPPING = "stopping"
+    ERROR = "error"
+    QUARANTINED = "quarantined"
+
+
+@dataclass
+class ServerConfig:
+    """Configuration for an MCP server."""
+
+    id: str
+    name: str
+    type: str  # "sse", "stdio", or "http"
+    enabled: bool = True
+    config: Dict = field(default_factory=dict)  # Raw config from JSON
+
+
+async def _input_schema_for_tool(
+    call_tool: CallToolFunc, name: str
+) -> Optional[Dict[str, Any]]:
+    """Best-effort lookup of an MCP tool's JSON inputSchema.
+
+    ``call_tool`` is pydantic-ai's bound ``direct_call_tool`` method, so its
+    ``__self__`` is the underlying MCP server, which exposes a (cached)
+    ``list_tools()``. The ``name`` here is already prefix-stripped, matching the
+    raw tool names returned by ``list_tools()``.
+
+    Returns ``None`` if the schema cannot be resolved for any reason -- callers
+    must treat that as "don't coerce".
+    """
+    server = getattr(call_tool, "__self__", None)
+    list_tools = getattr(server, "list_tools", None)
+    if list_tools is None:
+        return None
+    try:
+        tools = await list_tools()
+    except Exception:
+        return None
+    for tool in tools:
+        if getattr(tool, "name", None) == name:
+            return getattr(tool, "inputSchema", None)
+    return None
+
+
+async def process_tool_call(
+    ctx: RunContext[Any],
+    call_tool: CallToolFunc,
+    name: str,
+    tool_args: dict[str, Any],
+) -> ToolResult:
+    """A tool call processor that coerces args and passes along the deps.
+
+    pydantic-ai forwards MCP tool args without coercing them against each tool's
+    real JSON Schema, so models that emit stringified arrays/bools/numbers cause
+    downstream validation failures. We coerce here before forwarding.
+    """
+    from rich.console import Console
+
+    from fid_coder.config import get_banner_color
+
+    console = Console()
+    color = get_banner_color("mcp_tool_call")
+    banner = f"[bold white on {color}] MCP TOOL CALL [/bold white on {color}]"
+    console.print(f"\n{banner} 🔧 [bold cyan]{name}[/bold cyan]")
+
+    input_schema = await _input_schema_for_tool(call_tool, name)
+    tool_args = coerce_tool_args(tool_args, input_schema)
+
+    return await call_tool(name, tool_args, {"deps": ctx.deps})
+
+
+class ManagedMCPServer:
+    """
+    Managed wrapper around pydantic-ai MCP server classes.
+
+    This class provides management capabilities like enable/disable,
+    quarantine, and status tracking while maintaining 100% compatibility
+    with the existing Agent interface through get_pydantic_server().
+
+    Example usage:
+        config = ServerConfig(
+            id="123",
+            name="test",
+            type="sse",
+            config={"url": "http://localhost:8080"}
+        )
+        managed = ManagedMCPServer(config)
+        pydantic_server = managed.get_pydantic_server()  # Returns actual MCPServerSSE
+    """
+
+    def __init__(self, server_config: ServerConfig):
+        """
+        Initialize managed server with configuration.
+
+        Args:
+            server_config: Server configuration containing type, connection details, etc.
+        """
+        self.config = server_config
+        self._pydantic_server: Optional[
+            Union[MCPServerSSE, MCPServerStdio, MCPServerStreamableHTTP]
+        ] = None
+        self._state = ServerState.STOPPED
+        self._enabled = server_config.enabled
+        self._quarantine_until: Optional[datetime] = None
+        self._start_time: Optional[datetime] = None
+        self._stop_time: Optional[datetime] = None
+        self._error_message: Optional[str] = None
+
+        # Initialize the pydantic server
+        try:
+            self._create_server()
+            # Always start as STOPPED - servers must be explicitly started
+            self._state = ServerState.STOPPED
+        except Exception as e:
+            self._state = ServerState.ERROR
+            self._error_message = str(e)
+
+    def get_pydantic_server(
+        self,
+    ) -> Union[MCPServerSSE, MCPServerStdio, MCPServerStreamableHTTP]:
+        """
+        Get the actual pydantic-ai server instance.
+
+        This method returns the real pydantic-ai MCP server objects for 100% compatibility
+        with the existing Agent interface. Do not return custom classes or proxies.
+
+        Returns:
+            Actual pydantic-ai MCP server instance (MCPServerSSE, MCPServerStdio, or MCPServerStreamableHTTP)
+
+        Raises:
+            RuntimeError: If server creation failed or server is not available
+        """
+        if self._pydantic_server is None:
+            raise RuntimeError(f"Server {self.config.name} is not available")
+
+        if not self.is_enabled() or self.is_quarantined():
+            raise RuntimeError(f"Server {self.config.name} is disabled or quarantined")
+
+        return self._pydantic_server
+
+    def _create_server(self) -> None:
+        """
+        Create appropriate pydantic-ai server based on config type.
+
+        Raises:
+            ValueError: If server type is unsupported or config is invalid
+            Exception: If server creation fails
+        """
+        server_type = self.config.type.lower()
+        config = self.config.config
+        tool_prefix = _build_tool_prefix(self.config.name, config)
+
+        try:
+            if server_type == "sse":
+                if "url" not in config:
+                    raise ValueError("SSE server requires 'url' in config")
+
+                # Prepare arguments for MCPServerSSE (expand env vars in URL)
+                sse_kwargs = {
+                    "url": _expand_env_vars(config["url"]),
+                    "tool_prefix": tool_prefix,
+                }
+
+                # Add optional parameters if provided
+                if "timeout" in config:
+                    sse_kwargs["timeout"] = config["timeout"]
+                if "read_timeout" in config:
+                    sse_kwargs["read_timeout"] = config["read_timeout"]
+                if "http_client" in config:
+                    sse_kwargs["http_client"] = config["http_client"]
+                elif config.get("headers"):
+                    # Create HTTP client if headers are provided but no client specified
+                    sse_kwargs["http_client"] = self._get_http_client()
+
+                self._pydantic_server = MCPServerSSE(
+                    **sse_kwargs, process_tool_call=process_tool_call
+                )
+
+            elif server_type == "stdio":
+                if "command" not in config:
+                    raise ValueError("Stdio server requires 'command' in config")
+
+                # Handle command and arguments (expand env vars)
+                command = _expand_env_vars(config["command"])
+                args = config.get("args", [])
+                if isinstance(args, str):
+                    # If args is a string, split it then expand
+                    args = [_expand_env_vars(a) for a in args.split()]
+                else:
+                    args = _expand_env_vars(args)
+
+                # Prepare arguments for MCPServerStdio
+                stdio_kwargs = {"command": command, "args": list(args) if args else []}
+
+                # Add optional parameters if provided (expand env vars in env and cwd)
+                if "env" in config:
+                    stdio_kwargs["env"] = _expand_env_vars(config["env"])
+                # Always run (even with no configured env) so the child trusts
+                # our CA bundle; see _with_inherited_ca_bundle for why.
+                stdio_kwargs["env"] = _with_inherited_ca_bundle(stdio_kwargs.get("env"))
+                if "cwd" in config:
+                    stdio_kwargs["cwd"] = _expand_env_vars(config["cwd"])
+                # Default timeout of 60s for stdio servers - some servers like Serena take a while to start
+                # Users can override this in their config
+                stdio_kwargs["timeout"] = config.get("timeout", 60)
+                if "read_timeout" in config:
+                    stdio_kwargs["read_timeout"] = config["read_timeout"]
+
+                # Use BlockingMCPServerStdio for proper initialization blocking and stderr capture
+                # Create a unique message group for this server
+                message_group = uuid.uuid4()
+                self._pydantic_server = BlockingMCPServerStdio(
+                    **stdio_kwargs,
+                    process_tool_call=process_tool_call,
+                    tool_prefix=tool_prefix,
+                    emit_stderr=False,  # Logs go to file, not console (use /mcp logs to view)
+                    message_group=message_group,
+                )
+
+            elif server_type == "http":
+                if "url" not in config:
+                    raise ValueError("HTTP server requires 'url' in config")
+
+                # Prepare arguments for MCPServerStreamableHTTP (expand env vars in URL)
+                http_kwargs = {
+                    "url": _expand_env_vars(config["url"]),
+                    "tool_prefix": tool_prefix,
+                }
+
+                # Add optional parameters if provided
+                if "timeout" in config:
+                    http_kwargs["timeout"] = config["timeout"]
+                if "read_timeout" in config:
+                    http_kwargs["read_timeout"] = config["read_timeout"]
+
+                # Pass headers directly instead of creating http_client
+                # Note: There's a bug in MCP 1.25.0 where passing http_client
+                # causes "'_AsyncGeneratorContextManager' object has no attribute 'stream'"
+                # The workaround is to pass headers directly and let pydantic-ai
+                # create the http_client internally.
+                if config.get("headers"):
+                    # Expand environment variables in headers
+                    http_kwargs["headers"] = _expand_env_vars(config["headers"])
+
+                self._pydantic_server = MCPServerStreamableHTTP(
+                    **http_kwargs, process_tool_call=process_tool_call
+                )
+
+            else:
+                raise ValueError(f"Unsupported server type: {server_type}")
+
+        except Exception:
+            raise
+
+    def _get_http_client(self) -> httpx.AsyncClient:
+        """
+        Create httpx.AsyncClient with headers from config.
+
+        Returns:
+            Configured async HTTP client with custom headers
+        """
+        headers = self.config.config.get("headers", {})
+
+        # Expand environment variables in headers
+        resolved_headers = {}
+        if isinstance(headers, dict):
+            for k, v in headers.items():
+                if isinstance(v, str):
+                    resolved_headers[k] = os.path.expandvars(v)
+                else:
+                    resolved_headers[k] = v
+
+        timeout = self.config.config.get("timeout", 30)
+        client = create_async_client(headers=resolved_headers, timeout=timeout)
+        return client
+
+    def enable(self) -> None:
+        """Enable server availability."""
+        self._enabled = True
+        if self._state == ServerState.STOPPED and self._pydantic_server is not None:
+            self._state = ServerState.RUNNING
+            self._start_time = datetime.now()
+
+    def disable(self) -> None:
+        """Disable server availability."""
+        self._enabled = False
+        if self._state == ServerState.RUNNING:
+            self._state = ServerState.STOPPED
+            self._stop_time = datetime.now()
+
+    def is_enabled(self) -> bool:
+        """
+        Check if server is enabled.
+
+        Returns:
+            True if server is enabled, False otherwise
+        """
+        return self._enabled
+
+    def quarantine(self, duration: int) -> None:
+        """
+        Temporarily disable server for specified duration.
+
+        Args:
+            duration: Quarantine duration in seconds
+        """
+        self._quarantine_until = datetime.now() + timedelta(seconds=duration)
+        self._state = ServerState.QUARANTINED
+
+    def is_quarantined(self) -> bool:
+        """
+        Check if server is currently quarantined.
+
+        Returns:
+            True if server is quarantined, False otherwise
+        """
+        if self._quarantine_until is None:
+            return False
+
+        if datetime.now() >= self._quarantine_until:
+            # Quarantine period has expired
+            self._quarantine_until = None
+            if self._state == ServerState.QUARANTINED:
+                # Restore to running state if enabled
+                self._state = (
+                    ServerState.RUNNING if self._enabled else ServerState.STOPPED
+                )
+            return False
+
+        return True
+
+    def get_captured_stderr(self) -> list[str]:
+        """
+        Get captured stderr output if this is a stdio server.
+
+        Returns:
+            List of captured stderr lines, or empty list if not applicable
+        """
+        if isinstance(self._pydantic_server, BlockingMCPServerStdio):
+            return self._pydantic_server.get_captured_stderr()
+        return []
+
+    async def wait_until_ready(self, timeout: float = 30.0) -> bool:
+        """
+        Wait until the server is ready.
+
+        Args:
+            timeout: Maximum time to wait in seconds
+
+        Returns:
+            True if server is ready, False otherwise
+        """
+        if isinstance(self._pydantic_server, BlockingMCPServerStdio):
+            try:
+                await self._pydantic_server.wait_until_ready(timeout)
+                return True
+            except Exception:
+                return False
+        # Non-stdio servers are considered ready immediately
+        return True
+
+    async def ensure_ready(self, timeout: float = 30.0):
+        """
+        Ensure server is ready, raising exception if not.
+
+        Args:
+            timeout: Maximum time to wait in seconds
+
+        Raises:
+            TimeoutError: If server doesn't initialize within timeout
+            Exception: If server initialization failed
+        """
+        if isinstance(self._pydantic_server, BlockingMCPServerStdio):
+            await self._pydantic_server.ensure_ready(timeout)
+
+    def get_status(self) -> Dict[str, Any]:
+        """
+        Return current status information.
+
+        Returns:
+            Dictionary containing comprehensive status information
+        """
+        now = datetime.now()
+        uptime = None
+        if self._start_time and self._state == ServerState.RUNNING:
+            uptime = (now - self._start_time).total_seconds()
+
+        quarantine_remaining = None
+        if self.is_quarantined():
+            quarantine_remaining = (self._quarantine_until - now).total_seconds()
+
+        return {
+            "id": self.config.id,
+            "name": self.config.name,
+            "type": self.config.type,
+            "state": self._state.value,
+            "enabled": self._enabled,
+            "quarantined": self.is_quarantined(),
+            "quarantine_remaining_seconds": quarantine_remaining,
+            "uptime_seconds": uptime,
+            "start_time": self._start_time.isoformat() if self._start_time else None,
+            "stop_time": self._stop_time.isoformat() if self._stop_time else None,
+            "error_message": self._error_message,
+            "config": self.config.config.copy(),  # Copy to prevent modification
+            "server_available": (
+                self._pydantic_server is not None
+                and self._enabled
+                and not self.is_quarantined()
+                and self._state == ServerState.RUNNING
+            ),
+        }

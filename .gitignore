@@ -1,0 +1,46 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+.coverage
+htmlcov/
+coverage.xml
+coverage.json
+.ruff_cache/
+
+# Session memory
+.fid_session_memory.json
+
+# Pytest cache
+.pytest_cache/
+
+dummy_path
+
+.idea/
+
+.DS_Store
+.env
+.serena/
+.beads/
+main.dist/
+nuitka-crash-report.xml
+*.backup
+main.bin
+
+# Bundled skills removed — skills are now fetched from remote catalog
+fid_coder/bundled_skills/
+
+# Local editor / agent tooling (not part of the product)
+.claude/
+.cursor/
+
+.json
+
+.state/
