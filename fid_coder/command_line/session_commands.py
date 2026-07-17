@@ -458,14 +458,9 @@ def handle_load_context_command(command: str) -> bool:
     #   * ``-r NAME`` / ``--resume NAME`` is a continuation verb (pick
     #     up where you left off). That path pins and saves back.
     #
-    # Origin: commit ``cc04629b`` (Mike Pfaffenberger, 2025-10-11)
-    # introduced this rotate-on-load behavior as a deliberate design
-    # choice; the commit message explicitly says "Automatically rotate
-    # session ID when loading saved context to prevent overwrites." The
-    # ``-r`` flag was added 4 months later (commit ``92bb0f90``) and
-    # the asymmetry was preserved -- on purpose. Do NOT "unify" these
-    # two paths in the name of symmetry; you'd be deleting the encoded
-    # distinction between snapshot-load and continuation-resume.
+    # Rotate-on-load is deliberate: autosaves must not overwrite the
+    # loaded snapshot. The ``-r`` flag pins and saves in place; that
+    # asymmetry is intentional. Do NOT "unify" these two paths.
     #
     # If a user wants to continue working on the loaded snapshot in
     # place, the explicit move is ``/load_context NAME`` followed by

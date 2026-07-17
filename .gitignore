@@ -9,38 +9,21 @@ wheels/
 # Virtual environments
 .venv
 
+# Coverage / lint caches
 .coverage
 htmlcov/
 coverage.xml
 coverage.json
 .ruff_cache/
-
-# Session memory
-.fid_session_memory.json
-
-# Pytest cache
 .pytest_cache/
 
-dummy_path
-
-.idea/
-
-.DS_Store
+# Local secrets / session state
 .env
-.serena/
-.beads/
-main.dist/
-nuitka-crash-report.xml
-*.backup
-main.bin
+.fid_session_memory.json
+.state/
 
-# Bundled skills removed — skills are now fetched from remote catalog
-fid_coder/bundled_skills/
-
-# Local editor / agent tooling (not part of the product)
+# Editor / agent tooling
+.idea/
+.DS_Store
 .claude/
 .cursor/
-
-.json
-
-.state/

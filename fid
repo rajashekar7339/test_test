@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Simple launcher — same idea as the old `pup` command.
+# Local launcher for Fid Coder (requires uv).
 set -euo pipefail
 cd "$(dirname "$0")"
 export UV_NO_EDITABLE=1

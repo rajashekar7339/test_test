@@ -75,8 +75,6 @@ Also available as environment variables: `CLAUDE_TOOL_INPUT`, `CLAUDE_TOOL_NAME`
 - `1` - Block (stderr shown as block reason)
 - `2` - Error feedback to Claude without blocking
 
-See `docs/HOOKS.md` for the full user-facing guide.
-
 ## Tool Name Compatibility
 
 Hooks can be written using **either** the provider's tool name **or** fid_coder's

@@ -432,7 +432,6 @@ def test_colors_menu_get_preview_text():
     assert result is not None
 
 
-
 # ============================================================
 # model_settings_menu.py - keybinding handlers
 # ============================================================
@@ -1133,6 +1132,3 @@ def test_config_commands_pin_json_agents():
         # Show pin status - triggers json agents listing
         result = handle_pin_model_command("/pin_model")
         assert result is True
-
-
-
