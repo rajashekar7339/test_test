@@ -495,12 +495,21 @@ class TestHandleModelCommand:
 
 
 class TestHandleAddModelCommand:
-    def test_points_to_copilot_login(self):
+    def test_launches_interactive_picker(self):
+        from unittest.mock import AsyncMock
+
         from fid_coder.command_line.core_commands import handle_add_model_command
 
-        with patch("fid_coder.command_line.core_commands.emit_info") as mock_info:
+        with (
+            patch(
+                "fid_coder.plugins.copilot_auth.add_model_menu.interactive_model_picker",
+                new_callable=AsyncMock,
+                return_value=True,
+            ),
+            patch("fid_coder.command_line.core_commands.emit_info"),
+            patch("fid_coder.tools.command_runner.set_awaiting_user_input"),
+        ):
             assert handle_add_model_command("/add_model") is True
-            assert "copilot-login" in str(mock_info.call_args)
 
 
 class TestHandleModelSettingsCommand:
@@ -620,63 +629,6 @@ class TestHandleGeneratePrDescription:
             "/generate-pr-description @src/auth"
         )
         assert "src/auth" in result
-
-
-class TestHandleWiggumCommand:
-    def test_no_prompt(self):
-        from fid_coder.plugins.wiggum.register_callbacks import (
-            handle_wiggum_command,
-        )
-
-        with (
-            patch("fid_coder.plugins.wiggum.register_callbacks.emit_warning"),
-            patch("fid_coder.plugins.wiggum.register_callbacks.emit_info"),
-        ):
-            assert handle_wiggum_command("/wiggum") is True
-
-    def test_with_prompt(self):
-        from fid_coder.plugins.wiggum.register_callbacks import (
-            handle_wiggum_command,
-        )
-
-        with (
-            patch("fid_coder.plugins.wiggum.state.start"),
-            patch("fid_coder.plugins.wiggum.register_callbacks.emit_success"),
-            patch("fid_coder.plugins.wiggum.register_callbacks.emit_info"),
-        ):
-            result = handle_wiggum_command("/wiggum say hello")
-            assert result == "say hello"
-
-
-class TestHandleWiggumStopCommand:
-    def test_active(self):
-        from fid_coder.plugins.wiggum.register_callbacks import (
-            handle_wiggum_stop_command,
-        )
-
-        with (
-            patch(
-                "fid_coder.plugins.wiggum.state.is_active",
-                return_value=True,
-            ),
-            patch("fid_coder.plugins.wiggum.state.stop"),
-            patch("fid_coder.plugins.wiggum.register_callbacks.emit_success"),
-        ):
-            assert handle_wiggum_stop_command("/wiggum_stop") is True
-
-    def test_not_active(self):
-        from fid_coder.plugins.wiggum.register_callbacks import (
-            handle_wiggum_stop_command,
-        )
-
-        with (
-            patch(
-                "fid_coder.plugins.wiggum.state.is_active",
-                return_value=False,
-            ),
-            patch("fid_coder.plugins.wiggum.register_callbacks.emit_info"),
-        ):
-            assert handle_wiggum_stop_command("/wiggum_stop") is True
 
 
 class TestHandleMcpCommand:

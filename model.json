@@ -1,0 +1,118 @@
+{
+    "copilot-claude-opus-4.8": {
+      "type": "copilot",
+      "name": "claude-opus-4.8",
+      "custom_endpoint": {
+        "url": "https://api.individual.githubcopilot.com"
+      },
+      "context_length": 128000,
+      "copilot_host": "github.com",
+      "oauth_source": "copilot-auth-plugin",
+      "supported_settings": [
+        "temperature",
+        "extended_thinking",
+        "budget_tokens",
+        "interleaved_thinking"
+      ]
+    },
+    "copilot-claude-sonnet-5": {
+      "type": "copilot",
+      "name": "claude-sonnet-5",
+      "custom_endpoint": {
+        "url": "https://api.individual.githubcopilot.com"
+      },
+      "context_length": 128000,
+      "copilot_host": "github.com",
+      "oauth_source": "copilot-auth-plugin",
+      "supported_settings": [
+        "temperature",
+        "extended_thinking",
+        "budget_tokens",
+        "interleaved_thinking"
+      ]
+    },
+    "copilot-claude-haiku-4.5": {
+      "type": "copilot",
+      "name": "claude-haiku-4.5",
+      "custom_endpoint": {
+        "url": "https://api.individual.githubcopilot.com"
+      },
+      "context_length": 128000,
+      "copilot_host": "github.com",
+      "oauth_source": "copilot-auth-plugin",
+      "supported_settings": [
+        "temperature",
+        "extended_thinking",
+        "budget_tokens",
+        "interleaved_thinking"
+      ]
+    },
+    "copilot-gpt-4o": {
+      "type": "copilot",
+      "name": "gpt-4o",
+      "custom_endpoint": {
+        "url": "https://api.individual.githubcopilot.com"
+      },
+      "context_length": 128000,
+      "copilot_host": "github.com",
+      "oauth_source": "copilot-auth-plugin",
+      "supported_settings": [
+        "temperature"
+      ]
+    },
+    "copilot-gpt-4o-mini": {
+      "type": "copilot",
+      "name": "gpt-4o-mini",
+      "custom_endpoint": {
+        "url": "https://api.individual.githubcopilot.com"
+      },
+      "context_length": 128000,
+      "copilot_host": "github.com",
+      "oauth_source": "copilot-auth-plugin",
+      "supported_settings": [
+        "temperature"
+      ]
+    },
+    "copilot-gemini-3.5-flash": {
+      "type": "copilot",
+      "name": "gemini-3.5-flash",
+      "custom_endpoint": {
+        "url": "https://api.individual.githubcopilot.com"
+      },
+      "context_length": 128000,
+      "copilot_host": "github.com",
+      "oauth_source": "copilot-auth-plugin",
+      "supported_settings": [
+        "temperature"
+      ]
+    },
+    "copilot-text-embedding-3-small": {
+      "type": "copilot",
+      "name": "text-embedding-3-small",
+      "custom_endpoint": {
+        "url": "https://api.individual.githubcopilot.com"
+      },
+      "context_length": 128000,
+      "copilot_host": "github.com",
+      "oauth_source": "copilot-auth-plugin",
+      "supported_settings": [
+        "temperature"
+      ]
+    },
+    "copilot-claude-fable-5": {
+      "type": "copilot",
+      "name": "claude-fable-5",
+      "custom_endpoint": {
+        "url": "https://api.individual.githubcopilot.com"
+      },
+      "context_length": 128000,
+      "copilot_host": "github.com",
+      "oauth_source": "copilot-auth-plugin",
+      "supported_settings": [
+        "temperature",
+        "extended_thinking",
+        "budget_tokens",
+        "interleaved_thinking"
+      ]
+    }
+  }

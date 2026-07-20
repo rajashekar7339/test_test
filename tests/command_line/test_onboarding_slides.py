@@ -12,7 +12,7 @@ class TestModelOptions:
         from fid_coder.command_line.onboarding_slides import MODEL_OPTIONS
 
         assert isinstance(MODEL_OPTIONS, list)
-        assert len(MODEL_OPTIONS) >= 4
+        assert len(MODEL_OPTIONS) >= 2
 
     def test_model_options_tuples(self):
         from fid_coder.command_line.onboarding_slides import MODEL_OPTIONS
@@ -159,18 +159,3 @@ class TestSlideDone:
         assert isinstance(content, list)
         assert "Ready" in result
         assert "/tutorial" in result
-
-    def test_with_oauth_chatgpt(self):
-        from fid_coder.command_line.onboarding_slides import slide_done
-
-        content = slide_done("chatgpt")
-        result = _plain(content)
-        assert "Chatgpt" in result or "chatgpt" in result.lower()
-        assert "OAuth" in result
-
-    def test_with_oauth_claude(self):
-        from fid_coder.command_line.onboarding_slides import slide_done
-
-        content = slide_done("claude")
-        result = _plain(content)
-        assert "Claude" in result or "claude" in result.lower()

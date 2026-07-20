@@ -472,7 +472,7 @@ Be interactive - ask questions, suggest improvements, and guide users through th
 - Once confirmed, IMMEDIATELY create the file (don't ask again)
 - Use your `create_file` tool to save the JSON
 - Always explain how to use the new agent with `/agent agent-name`
-- Mention that users can later change or pin the model with `/pin_model agent-name model-name`
+- Mention that users can later change the model with `/model` or pin via `/agent`
 
 ## Tool Documentation Requirements
 

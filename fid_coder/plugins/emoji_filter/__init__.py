@@ -8,5 +8,5 @@ Targets (and nothing else):
 Explicitly excluded: ThinkingPart / ThinkingPartDelta, banners, emit_* messages,
 search strings (old_str / snippet), and anything else not listed above.
 
-Toggle via the ``emoji_filter`` key in fid.cfg. Default: on.
+Always on — no user toggle.
 """

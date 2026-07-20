@@ -527,26 +527,14 @@ def test_overhead_breakdown_kennel_clamps_when_block_larger_than_resolved():
     assert breakdown.kennel_memory_tokens == 400
 
 
-def test_kennel_memory_block_swallows_retriever_exceptions(monkeypatch):
-    """Retriever blowups must never break /context."""
+def test_kennel_memory_block_always_empty():
+    """Kennel plugin removed from this fork — block is always empty."""
     mod = _usage_module()
-    fake_retriever = MagicMock()
-    fake_retriever.build_recall_block.side_effect = RuntimeError("db on fire")
-    monkeypatch.setitem(
-        sys.modules,
-        "fid_coder.plugins.fid_kennel.retriever",
-        fake_retriever,
-    )
     assert mod._kennel_memory_block() == ""
 
 
-def test_kennel_memory_block_returns_empty_when_retriever_missing(monkeypatch):
-    """Kennel plugin uninstalled -> empty string, no exception."""
+def test_kennel_memory_block_idempotent():
+    """Repeated calls stay empty without importing removed kennel plugin."""
     mod = _usage_module()
-    # Force the import inside ``_kennel_memory_block`` to fail.
-    monkeypatch.setitem(
-        sys.modules,
-        "fid_coder.plugins.fid_kennel.retriever",
-        None,
-    )
+    assert mod._kennel_memory_block() == ""
     assert mod._kennel_memory_block() == ""

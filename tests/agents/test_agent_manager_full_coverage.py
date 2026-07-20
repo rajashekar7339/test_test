@@ -413,18 +413,6 @@ class TestGetAvailableAgents:
 
     @patch("fid_coder.agents.agent_manager._discover_agents")
     @patch("fid_coder.config.get_pack_agents_enabled", return_value=True)
-    @patch("fid_coder.config.get_universal_constructor_enabled", return_value=False)
-    def test_filters_uc_agents(self, mock_uc, mock_pack, mock_discover):
-        am._AGENT_REGISTRY["uc-agent"] = FakeAgent
-        with (
-            patch("fid_coder.config.PACK_AGENT_NAMES", set()),
-            patch("fid_coder.config.UC_AGENT_NAMES", {"uc-agent"}),
-        ):
-            agents = am.get_available_agents()
-            assert "uc-agent" not in agents
-
-    @patch("fid_coder.agents.agent_manager._discover_agents")
-    @patch("fid_coder.config.get_pack_agents_enabled", return_value=True)
     @patch("fid_coder.config.get_universal_constructor_enabled", return_value=True)
     def test_json_agent_display_name(self, mock_uc, mock_pack, mock_discover, tmp_path):
         # Create a JSON agent file

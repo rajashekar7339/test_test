@@ -129,9 +129,9 @@ class TestToolsContentPrinciples:
 class TestToolsContentFormatting:
     """Test that tools_content has proper formatting and emojis."""
 
-    def test_contains_dog_emoji(self):
-        """Test that the content contains dog emoji (brand consistency)."""
-        assert "🐶" in tools_content, "Expected dog emoji 🐶 for brand consistency"
+    def test_contains_swiss_army_knife(self):
+        """Test that the content mentions the Swiss Army knife metaphor."""
+        assert "Swiss Army knife" in tools_content
 
     def test_contains_markdown_headers(self):
         """Test that content uses markdown-style headers."""

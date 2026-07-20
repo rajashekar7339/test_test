@@ -20,11 +20,11 @@ class TestShellSafetyCallbackOAuthBypass:
     """Test OAuth model bypass in shell_safety_callback."""
 
     @pytest.mark.anyio
-    async def test_callback_skips_for_oauth_model_anthropic(self):
-        """Test callback returns None for Anthropic OAuth models."""
+    async def test_callback_skips_for_oauth_model_copilot_claude(self):
+        """Test callback returns None for Copilot OAuth models."""
         with patch(
             "fid_coder.plugins.shell_safety.register_callbacks.get_global_model_name",
-            return_value="claude-code-123",
+            return_value="copilot-claude-3",
         ):
             result = await shell_safety_callback(
                 context=None, command="rm -rf /", cwd=None, timeout=60
@@ -32,11 +32,11 @@ class TestShellSafetyCallbackOAuthBypass:
             assert result is None
 
     @pytest.mark.anyio
-    async def test_callback_skips_for_oauth_model_openai(self):
-        """Test callback returns None for OpenAI OAuth models."""
+    async def test_callback_skips_for_oauth_model_copilot_openai(self):
+        """Test callback returns None for Copilot OpenAI models."""
         with patch(
             "fid_coder.plugins.shell_safety.register_callbacks.get_global_model_name",
-            return_value="chatgpt-4",
+            return_value="copilot-gpt-4",
         ):
             result = await shell_safety_callback(
                 context=None, command="rm -rf /", cwd=None, timeout=60
@@ -44,11 +44,11 @@ class TestShellSafetyCallbackOAuthBypass:
             assert result is None
 
     @pytest.mark.anyio
-    async def test_callback_skips_for_oauth_model_google(self):
-        """Test callback returns None for Google OAuth models."""
+    async def test_callback_skips_for_oauth_model_copilot_google(self):
+        """Test callback returns None for Copilot Google models."""
         with patch(
             "fid_coder.plugins.shell_safety.register_callbacks.get_global_model_name",
-            return_value="gemini-oauth-pro",
+            return_value="copilot-gemini-pro",
         ):
             result = await shell_safety_callback(
                 context=None, command="rm -rf /", cwd=None, timeout=60

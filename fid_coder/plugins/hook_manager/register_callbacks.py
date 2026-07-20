@@ -17,7 +17,6 @@ from fid_coder.callbacks import register_callback
 logger = logging.getLogger(__name__)
 
 _COMMAND_NAME = "hooks"
-_ALIASES = ("hook",)
 
 
 # ---------------------------------------------------------------------------
@@ -32,7 +31,6 @@ def _hooks_command_help() -> List[Tuple[str, str]]:
             "hooks",
             "Manage Claude Code hooks (global + project) – browse, enable/disable, inspect",
         ),
-        ("hook", "Alias for /hooks"),
     ]
 
 
@@ -42,7 +40,7 @@ def _hooks_command_help() -> List[Tuple[str, str]]:
 
 
 def _handle_hooks_command(command: str, name: str) -> Optional[Any]:
-    """Handle /hooks (and /hook) slash commands.
+    """Handle /hooks slash commands.
 
     Sub-commands
     ------------
@@ -52,7 +50,7 @@ def _handle_hooks_command(command: str, name: str) -> Optional[Any]:
     /hooks disable   Disable every hook (both global and project)
     /hooks status    Show counts per event type
     """
-    if name not in (_COMMAND_NAME, *_ALIASES):
+    if name != _COMMAND_NAME:
         return None  # Not our command – pass through
     import copy
 

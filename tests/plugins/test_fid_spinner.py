@@ -48,13 +48,13 @@ def bar(monkeypatch):
 # =========================================================================
 
 
-def test_frames_bounce_there_and_back():
-    """Eight frames: pup walks cells 0..4 then back, kennel width fixed."""
+def test_default_frames_are_aesthetic():
+    """Default spinner is aesthetic: fill then drain to hollow blocks."""
+    from fid_coder.plugins.fid_spinner import spinners as sp
+
+    assert rc.FRAMES == sp.BUILTIN_SPINNERS["aesthetic"].frames
     assert len(rc.FRAMES) == 8
-    positions = [frame.index(rc._FID) for frame in rc.FRAMES]
-    assert positions == [1, 2, 3, 4, 5, 4, 3, 2]  # offset by the '('
-    # Every frame has the same shape: parens + 4 pad cells + trailing space.
-    assert all(f.startswith("(") and f.endswith(") ") for f in rc.FRAMES)
+    assert rc.FRAMES[-1] == "\u25b1" * 7
     assert len({len(f) for f in rc.FRAMES}) == 1
 
 
@@ -70,9 +70,8 @@ async def test_run_start_spins_and_run_end_clears(bar):
     await asyncio.sleep(0.05)  # a few ticks
     painted = [p for p in bar.prefixes if p]
     assert painted, "ticker never painted a frame"
-    assert all(rc._FID in p for p in painted)
-    # Frames only -- no "<fid> is thinking..." chatter on the status
-    # row -- each followed by the gap that pads out the next element.
+    # Frames only -- no thinking chatter on the status row -- each
+    # followed by the gap that pads out the next element.
     assert all(p.endswith(rc._PREFIX_GAP) for p in painted)
     assert all(p.removesuffix(rc._PREFIX_GAP) in rc.FRAMES for p in painted)
 

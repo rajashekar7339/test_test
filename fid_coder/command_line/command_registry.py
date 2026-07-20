@@ -86,7 +86,6 @@ def register_command(
         ...     name="session",
         ...     description="Show or rotate autosave session ID",
         ...     usage="/session [id|new]",
-        ...     aliases=["s"],
         ...     category="session",
         ... )
         ... def handle_session(command: str) -> bool:

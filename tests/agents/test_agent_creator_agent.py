@@ -184,26 +184,6 @@ class TestAgentCreatorAgent:
         assert "power-user agents" in prompt
         assert "`model_name` is required" in prompt
 
-    def test_get_available_tools_with_uc_enabled(self):
-        """Test that get_available_tools includes UC when enabled."""
-        with patch(
-            "fid_coder.config.get_universal_constructor_enabled",
-            return_value=True,
-        ):
-            agent = AgentCreatorAgent()
-            expected_tools = [
-                "list_files",
-                "read_file",
-                "create_file",
-                "replace_in_file",
-                "delete_snippet",
-                "ask_user_question",
-                "list_agents",
-                "invoke_agent",
-                "universal_constructor",
-            ]
-            assert agent.get_available_tools() == expected_tools
-
     def test_get_available_tools_with_uc_disabled(self):
         """Test that get_available_tools excludes UC when disabled."""
         with patch(

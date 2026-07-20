@@ -17,12 +17,15 @@ prompt, and only while it has something to say):
 
 The popup opens UNDER the typed line (IDE-dropdown feel): the prompt
 rows slide up to make room — the existing ``_sync_reserved``
-grow/shrink machinery provides the motion. On close the prompt does
-NOT slide back down: the vacated rows persist as blank ``_popup_slack``
-until ``notify_transcript_output`` reclaims them, so the prompt falls
-back into place only when new output is scrolling anyway. The same
-machinery materializes/collapses the status row when its text appears
-or empties (``_total_reserved`` changes → region grows/shrinks).
+grow/shrink machinery provides the motion. Shrinking WHILE THE MENU
+STAYS OPEN (fewer matches as you type) holds the vacated rows as blank
+``_popup_slack`` until ``notify_transcript_output`` reclaims them one
+row at a time, so the prompt doesn't jump mid-typing. Fully closing the
+menu collapses that slack immediately instead, so the prompt (and
+status row right under it) snap back to the bottom with no leftover
+idle gap. The same machinery materializes/collapses the status row
+when its text appears or empties (``_total_reserved`` changes → region
+grows/shrinks).
 """
 
 from __future__ import annotations

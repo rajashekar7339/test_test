@@ -10,9 +10,7 @@ Covers:
 - agent_skills/skills_install_menu.py (line 60)
 """
 
-import ast
 from pathlib import Path
-from types import ModuleType
 from unittest.mock import MagicMock, patch
 
 # ============================================================
@@ -488,4 +486,3 @@ class TestSkillsInstallMenuSizeFormat:
         # But we still test large values to ensure GB branch works
         result = _format_bytes(5 * 1024 * 1024 * 1024)
         assert "GB" in result
-

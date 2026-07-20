@@ -122,8 +122,12 @@ class TestStartCommand:
         """Test start when agent reload fails."""
         mock_agent = Mock()
         mock_agent.reload_code_generation_agent.side_effect = Exception("Reload failed")
+        mock_agent.update_mcp_tool_cache_sync = Mock()
 
-        with patch("fid_coder.agents.get_current_agent", return_value=mock_agent):
+        with patch(
+            "fid_coder.command_line.mcp.start_command.get_current_agent",
+            return_value=mock_agent,
+        ):
             with patch(
                 "fid_coder.command_line.mcp.start_command.find_server_id_by_name"
             ) as mock_find:
@@ -229,8 +233,12 @@ class TestStopCommand:
         """Test stop when agent reload fails."""
         mock_agent = Mock()
         mock_agent.reload_code_generation_agent.side_effect = Exception("Reload failed")
+        mock_agent.update_mcp_tool_cache_sync = Mock()
 
-        with patch("fid_coder.agents.get_current_agent", return_value=mock_agent):
+        with patch(
+            "fid_coder.command_line.mcp.stop_command.get_current_agent",
+            return_value=mock_agent,
+        ):
             with patch(
                 "fid_coder.command_line.mcp.stop_command.find_server_id_by_name"
             ) as mock_find:
@@ -363,8 +371,12 @@ class TestRestartCommand:
         """Test restart when agent reload fails."""
         mock_agent = Mock()
         mock_agent.reload_code_generation_agent.side_effect = Exception("Reload failed")
+        mock_agent.update_mcp_tool_cache_sync = Mock()
 
-        with patch("fid_coder.agents.get_current_agent", return_value=mock_agent):
+        with patch(
+            "fid_coder.agents.get_current_agent",
+            return_value=mock_agent,
+        ):
             with patch(
                 "fid_coder.command_line.mcp.restart_command.find_server_id_by_name"
             ) as mock_find:

@@ -1,9 +1,8 @@
 """Interactive theme picker TUI.
 
-Reuses prompt_toolkit's full-screen pattern (cribbed from
-``fid_coder.command_line.colors_menu``) but pared down to the curated
-theme choices, with a live preview that shows banners AND content text
-in the theme's body styles.
+Uses prompt_toolkit's full-screen split-panel pattern, pared down to the
+curated theme choices, with a live preview that shows banners AND content
+text in the theme's body styles.
 """
 
 from __future__ import annotations
@@ -22,7 +21,7 @@ from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.widgets import Frame
 from rich.console import Console
 
-from fid_coder.command_line.colors_menu import (
+from fid_coder.command_line.banner_display import (
     BANNER_DISPLAY_INFO,
     BANNER_SAMPLE_CONTENT,
 )

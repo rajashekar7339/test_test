@@ -83,4 +83,4 @@ Green Screen ports the canonical phosphor colors from [vybestack/llxprt-code](ht
 
 **Level 3** — fires xterm OSC sequences (`\\033]10;#fg\\007`, `\\033]11;#bg\\007`, `\\033]4;N;#hex\\007`) which modern terminals honor terminal-wide. Auto-resets on exit via `atexit`. Persists across restarts via JSON in `fid.cfg`. Supported in iTerm2, Terminal.app, Alacritty, kitty, ode, GNOME Terminal, Windows Terminal. Unsupported terminals silently ignore.
 
-Plays nice with `/colors` — same color pool, same config keys for banners.
+Shares the same banner color pool and config keys used by `DEFAULT_BANNER_COLORS`.

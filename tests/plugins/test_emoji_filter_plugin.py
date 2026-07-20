@@ -55,24 +55,12 @@ def test_contains_emoji_detects():
 
 
 # ---------------------------------------------------------------------------
-# Config toggle
+# Config (always on)
 # ---------------------------------------------------------------------------
 
 
-def test_is_enabled_defaults_to_true(tmp_path, monkeypatch):
-    cfg_file = tmp_path / "fid.cfg"
-    monkeypatch.setattr("fid_coder.config.CONFIG_FILE", str(cfg_file))
+def test_is_enabled_always_true():
     assert _config_module().is_enabled() is True
-
-
-def test_set_enabled_persists_off(tmp_path, monkeypatch):
-    cfg_file = tmp_path / "fid.cfg"
-    monkeypatch.setattr("fid_coder.config.CONFIG_FILE", str(cfg_file))
-    cfg = _config_module()
-    cfg.set_enabled(False)
-    assert cfg.is_enabled() is False
-    cfg.set_enabled(True)
-    assert cfg.is_enabled() is True
 
 
 # ---------------------------------------------------------------------------
@@ -300,53 +288,3 @@ def test_streaming_patch_is_idempotent():
     module._install_streaming_patch()
     second_init = TextPartDelta.__init__
     assert first_init is second_init
-
-
-# ---------------------------------------------------------------------------
-# Slash command
-# ---------------------------------------------------------------------------
-
-
-def test_custom_help_lists_emoji_filter():
-    entries = dict(_plugin_module()._custom_help())
-    assert "emoji-filter" in entries
-
-
-def test_handle_command_ignores_unrelated():
-    assert _plugin_module()._handle_command("/nope", "nope") is None
-
-
-def test_handle_command_toggles_on(tmp_path, monkeypatch):
-    cfg_file = tmp_path / "fid.cfg"
-    monkeypatch.setattr("fid_coder.config.CONFIG_FILE", str(cfg_file))
-    module = _plugin_module()
-    cfg = _config_module()
-    cfg.set_enabled(False)
-
-    with patch("fid_coder.messaging.emit_info"):
-        result = module._handle_command("/emoji-filter on", "emoji-filter")
-    assert result is True
-    assert cfg.is_enabled() is True
-
-
-def test_handle_command_toggles_off(tmp_path, monkeypatch):
-    cfg_file = tmp_path / "fid.cfg"
-    monkeypatch.setattr("fid_coder.config.CONFIG_FILE", str(cfg_file))
-    module = _plugin_module()
-    cfg = _config_module()
-    cfg.set_enabled(True)
-
-    with patch("fid_coder.messaging.emit_info"):
-        result = module._handle_command("/emoji-filter off", "emoji-filter")
-    assert result is True
-    assert cfg.is_enabled() is False
-
-
-def test_handle_command_status(tmp_path, monkeypatch):
-    cfg_file = tmp_path / "fid.cfg"
-    monkeypatch.setattr("fid_coder.config.CONFIG_FILE", str(cfg_file))
-    module = _plugin_module()
-    with patch("fid_coder.messaging.emit_info") as mock_info:
-        result = module._handle_command("/emoji-filter status", "emoji-filter")
-    assert result is True
-    assert mock_info.called

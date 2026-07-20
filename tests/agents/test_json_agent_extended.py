@@ -342,10 +342,11 @@ class TestJsonAgentExtended:
         agent_file.write_text(json.dumps(config))
 
         agent = JSONAgent(str(agent_file))
-        # Should fall back to base class implementation
-        model_name = agent.get_model_name()
-        # We don't know what the default is, but it should not be None
-        assert model_name is not None
+        with patch(
+            "fid_coder.agents.base_agent.get_global_model_name",
+            return_value="fallback-model",
+        ):
+            assert agent.get_model_name() == "fallback-model"
 
 
 class TestDiscoverJsonAgents:

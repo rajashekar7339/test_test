@@ -380,9 +380,6 @@ def get_config_keys():
         "diff_context_lines",
         "default_agent",
         "temperature",
-        "frontend_emitter_enabled",
-        "frontend_emitter_max_recent_events",
-        "frontend_emitter_queue_size",
     ]
     # 'enable_dbos' is reserved for the dbos_durable_exec plugin and is read
     # via the generic get_value API; intentionally not in default_keys.
@@ -409,9 +406,6 @@ def get_config_keys():
     default_keys.append("resume_message_count")
     # Per-file AGENTS.md character cap (see get_agents_md_max_chars()).
     default_keys.append("agents_md_max_chars")
-    # Add /goal iteration cap (owned by the wiggum plugin, surfaced here so
-    # /set autocompletes it). See plugins/wiggum/register_callbacks.py.
-    default_keys.append("goal_max_iterations")
     # Add dangerous command guard disable (skips force push and destructive command guards)
     default_keys.append("disable_dangerous_command_guard")
     # Add retry profile keys (backoff policy for streaming retries). Per-model
@@ -2786,34 +2780,3 @@ def set_default_agent(agent_name: str) -> None:
         agent_name: The name of the agent to set as default.
     """
     set_config_value("default_agent", agent_name)
-
-
-# --- FRONTEND EMITTER CONFIGURATION ---
-def get_frontend_emitter_enabled() -> bool:
-    """Check if frontend emitter is enabled."""
-    val = get_value("frontend_emitter_enabled")
-    if val is None:
-        return True  # Enabled by default
-    return str(val).lower() in ("1", "true", "yes", "on")
-
-
-def get_frontend_emitter_max_recent_events() -> int:
-    """Get max number of recent events to buffer."""
-    val = get_value("frontend_emitter_max_recent_events")
-    if val is None:
-        return 100
-    try:
-        return int(val)
-    except ValueError:
-        return 100
-
-
-def get_frontend_emitter_queue_size() -> int:
-    """Get max subscriber queue size."""
-    val = get_value("frontend_emitter_queue_size")
-    if val is None:
-        return 100
-    try:
-        return int(val)
-    except ValueError:
-        return 100

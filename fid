@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Local launcher for Fid Coder (requires uv).
+# Reinstalls the local package so source edits are visible (same version
+# number does not otherwise refresh a --no-editable install).
 set -euo pipefail
 cd "$(dirname "$0")"
 export UV_NO_EDITABLE=1
+uv sync --no-editable --reinstall-package fid-coder --quiet
 exec uv run --no-editable --no-sync fid-coder "$@"

@@ -190,7 +190,7 @@ class TestSkillsCommandHelp:
         entries = _skills_command_help()
         names = [n for n, _ in entries]
         assert "skills" in names
-        assert "skill" in names
+        assert "skill" not in names
 
 
 # Patch targets for lazy imports inside _handle_skills_command
@@ -448,10 +448,24 @@ class TestHandleSkillsCommand:
             assert _handle_skills_command("/skills", "skills") is True
             mock_menu.assert_called_once()
 
-    def test_skill_alias(self):
+    def test_skill_alias_removed(self):
+        """/skill is no longer an alias for /skills."""
         from fid_coder.plugins.agent_skills.register_callbacks import (
             _handle_skills_command,
+            _skills_command_help,
         )
 
-        with patch(f"{_SKILLS_MENU}.show_skills_menu"):
-            assert _handle_skills_command("/skill", "skill") is True
+        with patch(
+            "fid_coder.plugins.agent_skills.skill_commands.handle_skill_command",
+            return_value=None,
+        ) as mock_skill:
+            assert _handle_skills_command("/skill", "skill") is None
+            mock_skill.assert_called_once_with("/skill", "skill")
+
+        with patch(
+            "fid_coder.plugins.agent_skills.skill_commands.skill_command_help",
+            return_value=[],
+        ):
+            help_names = [name for name, _ in _skills_command_help()]
+        assert "skill" not in help_names
+        assert "skills" in help_names

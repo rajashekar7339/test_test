@@ -340,8 +340,8 @@ def _handler_in(module_name):
 
 def test_plugin_owner_of_module_builtin():
     assert (
-        pc._plugin_owner_of_module("fid_coder.plugins.wiggum.register_callbacks")
-        == "wiggum"
+        pc._plugin_owner_of_module("fid_coder.plugins.shell_safety.register_callbacks")
+        == "shell_safety"
     )
 
 
@@ -374,9 +374,9 @@ def test_registry_commands_attributed_by_handler_module(monkeypatch):
 
     infos = [
         _FakeCommandInfo(
-            "wiggum",
-            "Loop mode",
-            _handler_in("fid_coder.plugins.wiggum.register_callbacks"),
+            "shell-check",
+            "Shell safety check",
+            _handler_in("fid_coder.plugins.shell_safety.register_callbacks"),
         ),
         _FakeCommandInfo(
             "other",
@@ -391,8 +391,10 @@ def test_registry_commands_attributed_by_handler_module(monkeypatch):
     ]
     monkeypatch.setattr(command_registry, "get_unique_commands", lambda: infos)
 
-    assert pc._registry_commands("wiggum") == ["/wiggum — Loop mode"]
-    # Sibling plugin's command never leaks into wiggum's list.
+    assert pc._registry_commands("shell_safety") == [
+        "/shell-check — Shell safety check"
+    ]
+    # Sibling plugin's command never leaks into shell_safety's list.
     assert pc._registry_commands("elsewhere") == ["/other — Other plugin command"]
     # Core commands aren't attributed to any plugin.
     assert pc._registry_commands("fid_coder") == ["/core_cmd — A core command"]
@@ -405,7 +407,7 @@ def test_registry_commands_lookup_failure_yields_empty(monkeypatch):
         raise RuntimeError("registry exploded")
 
     monkeypatch.setattr(command_registry, "get_unique_commands", _boom)
-    assert pc._registry_commands("wiggum") == []
+    assert pc._registry_commands("shell_safety") == []
 
 
 def test_get_commands_merges_callback_and_registry(clean_callbacks, monkeypatch):

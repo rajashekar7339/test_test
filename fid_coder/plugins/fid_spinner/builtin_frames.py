@@ -166,7 +166,7 @@ EXTRA_SPECS = {
             "\u25b0\u25b0\u25b0\u25b0\u25b0\u25b0\u25b0",
             "\u25b1\u25b1\u25b1\u25b1\u25b1\u25b1\u25b1",
         ),
-        "vaporwave progress vibes",
+        "vaporwave progress vibes (default)",
     ),
 }
 # fmt: on

@@ -1,7 +1,7 @@
 """Tests targeting remaining uncovered lines in fid_coder/agents/ (non-base_agent)."""
 
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -53,16 +53,6 @@ def test_qa_kitten():
     assert "browser_page_snapshot" in prompt
     # Screenshots explicitly scoped to visual assertions, not progression.
     assert "visual assertions" in lowered or "visual assertion" in lowered
-
-
-def test_helios_agent():
-    from fid_coder.agents.agent_helios import HeliosAgent
-
-    agent = HeliosAgent()
-    tools = agent.get_available_tools()
-    assert isinstance(tools, list)
-    prompt = agent.get_system_prompt()
-    assert isinstance(prompt, str)
 
 
 def test_fid_coder_agent():
@@ -121,42 +111,6 @@ def test_fid_coder_authored_prompt_excludes_runtime_additions():
 # ---------------------------------------------------------------------------
 # agent_creator_agent.py - lines 45-46, 52, 546-626
 # ---------------------------------------------------------------------------
-
-
-def test_creator_agent_get_system_prompt_with_uc_tools():
-    """Cover UC tools loading in get_system_prompt."""
-    from fid_coder.agents.agent_creator_agent import AgentCreatorAgent
-
-    agent = AgentCreatorAgent()
-
-    mock_tool = MagicMock()
-    mock_tool.full_name = "my_tool"
-    mock_tool.meta.enabled = True
-    mock_tool.meta.description = "A tool"
-
-    mock_registry = MagicMock()
-    mock_registry.list_tools.return_value = [mock_tool]
-
-    with patch(
-        "fid_coder.plugins.universal_constructor.registry.get_registry",
-        return_value=mock_registry,
-    ):
-        prompt = agent.get_system_prompt()
-        assert "my_tool" in prompt
-
-
-def test_creator_agent_get_system_prompt_uc_import_error():
-    """Cover ImportError branch for UC tools."""
-    from fid_coder.agents.agent_creator_agent import AgentCreatorAgent
-
-    agent = AgentCreatorAgent()
-
-    with patch(
-        "fid_coder.plugins.universal_constructor.registry.get_registry",
-        side_effect=Exception("boom"),
-    ):
-        prompt = agent.get_system_prompt()
-        assert isinstance(prompt, str)
 
 
 def test_creator_validate_agent_json_valid():
@@ -550,55 +504,6 @@ def _make_json_agent(tmp_path, config):
     path = tmp_path / f"{config['name']}.json"
     path.write_text(json.dumps(config))
     return JSONAgent(str(path))
-
-
-def test_json_agent_uc_tools(tmp_path):
-    """Cover UC tool resolution in get_available_tools."""
-    agent = _make_json_agent(
-        tmp_path,
-        {
-            "name": "test-json",
-            "display_name": "Test JSON",
-            "description": "A test agent",
-            "system_prompt": "You are test.",
-            "tools": ["list_files", "my_uc_tool"],
-        },
-    )
-
-    mock_tool = MagicMock()
-    mock_tool.full_name = "my_uc_tool"
-    mock_tool.meta.enabled = True
-
-    mock_registry = MagicMock()
-    mock_registry.list_tools.return_value = [mock_tool]
-
-    with patch(
-        "fid_coder.plugins.universal_constructor.registry.get_registry",
-        return_value=mock_registry,
-    ):
-        tools = agent.get_available_tools()
-        assert "uc:my_uc_tool" in tools
-
-
-def test_json_agent_uc_import_error(tmp_path):
-    """Cover ImportError branch in get_available_tools."""
-    agent = _make_json_agent(
-        tmp_path,
-        {
-            "name": "test-json2",
-            "display_name": "Test",
-            "description": "d",
-            "system_prompt": "p",
-            "tools": ["list_files"],
-        },
-    )
-
-    # The import is inside get_available_tools, so we patch at source
-    with patch.dict(
-        "sys.modules", {"fid_coder.plugins.universal_constructor.registry": None}
-    ):
-        tools = agent.get_available_tools()
-        assert "list_files" in tools
 
 
 def test_json_agent_get_user_prompt(tmp_path):

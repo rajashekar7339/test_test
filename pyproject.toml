@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "fid-coder"
 version = "0.0.643"
-description = "GitHub Copilot coding agent"
+description = "Fid Coder - an internal coding agent"
 readme = "README.md"
 requires-python = ">=3.11,<3.15"
 dependencies = [
@@ -49,7 +49,7 @@ ignore_no_config = true
 include = ["fid_coder*"]
 
 [tool.setuptools.package-data]
-fid_coder = ["models.json"]
+fid_coder = ["models.json", "plugins/**/*.md"]
 
 [tool.ruff.lint.per-file-ignores]
 "fid_coder/main.py" = ["E402"]

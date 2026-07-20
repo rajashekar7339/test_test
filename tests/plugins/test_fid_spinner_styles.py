@@ -61,20 +61,18 @@ def test_builtins_include_the_cli_spinners_pack():
 
 def test_every_builtin_defaults_to_point_two_except_the_classic():
     """One speed to rule them all -- per-spinner tuning is what the
-    picker's speed keys and spinners.json tweaks are for. The default
+    picker's speed keys and spinners.json tweaks are for. The classic
     fid is the lone exception: the kennel bounce trots at 0.06s.
     """
     for spinner in sp.BUILTIN_SPINNERS.values():
-        expected = 0.06 if spinner.name == sp.DEFAULT_SPINNER else 0.2
+        expected = 0.06 if spinner.name == "fid" else 0.2
         assert spinner.interval == pytest.approx(expected), spinner.name
 
 
-def test_tick_interval_follows_the_fid_default():
-    """rc sources its fallback tempo from the catalogue, so the fid's
-    0.06s default and the tick loop can never disagree.
-    """
-    assert rc._TICK_INTERVAL_S == pytest.approx(0.06)
+def test_tick_interval_follows_the_default_spinner():
+    """rc sources its fallback tempo from the catalogue default."""
     assert rc._TICK_INTERVAL_S == sp.BUILTIN_SPINNERS[sp.DEFAULT_SPINNER].interval
+    assert sp.DEFAULT_SPINNER == "aesthetic"
 
 
 def test_paint_gap_separates_frame_from_status(monkeypatch):
@@ -135,8 +133,9 @@ def test_paws_frames_share_cell_width_despite_unequal_len():
 
 
 def test_default_spinner_matches_rc_frames():
-    """DRY check: rc.FRAMES *is* the catalogue's fid entry."""
+    """DRY check: rc.FRAMES *is* the catalogue's default entry."""
     assert rc.FRAMES == sp.BUILTIN_SPINNERS[sp.DEFAULT_SPINNER].frames
+    assert sp.DEFAULT_SPINNER == "aesthetic"
 
 
 # =========================================================================
@@ -238,14 +237,14 @@ def test_frameless_entry_for_unknown_name_is_skipped():
     assert "no-such" not in sp.get_catalogue()
 
 
-def test_tick_loop_uses_json_tweak_of_fid():
-    """A frameless re-speed of the default fid must not route through
+def test_tick_loop_uses_json_tweak_of_default():
+    """A frameless re-speed of the default spinner must not route through
     the module constants (source is 'builtin+user', not 'builtin').
     """
-    _write_user_file(sp.USER_SPINNERS_FILE, {"fid": {"interval": 0.4}})
+    _write_user_file(sp.USER_SPINNERS_FILE, {sp.DEFAULT_SPINNER: {"interval": 0.4}})
     sp.invalidate_cache()
     frames, interval = rc._current_frames_and_interval()
-    assert frames == sp.BUILTIN_SPINNERS["fid"].frames
+    assert frames == sp.BUILTIN_SPINNERS[sp.DEFAULT_SPINNER].frames
     assert interval == pytest.approx(0.4)
 
 
@@ -396,8 +395,8 @@ def test_tick_loop_uses_selected_spinner():
     assert interval == sp.BUILTIN_SPINNERS["binary"].interval
 
 
-def test_tick_loop_honors_speed_override_on_the_default_fid():
-    """A custom speed on the stock fid must NOT route through the
+def test_tick_loop_honors_speed_override_on_the_default():
+    """A custom speed on the stock default must NOT route through the
     module constants (which would silently drop the override).
     """
     sp.set_active(sp.DEFAULT_SPINNER, 0.5)
@@ -406,9 +405,10 @@ def test_tick_loop_honors_speed_override_on_the_default_fid():
     assert interval == pytest.approx(0.5)
 
 
-def test_tick_loop_uses_user_override_of_fid():
+def test_tick_loop_uses_user_override_of_default():
     _write_user_file(
-        sp.USER_SPINNERS_FILE, {"fid": {"frames": ["custom"], "interval": 0.5}}
+        sp.USER_SPINNERS_FILE,
+        {sp.DEFAULT_SPINNER: {"frames": ["custom"], "interval": 0.5}},
     )
     sp.invalidate_cache()
     frames, interval = rc._current_frames_and_interval()

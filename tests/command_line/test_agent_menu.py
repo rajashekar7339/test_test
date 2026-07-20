@@ -533,15 +533,15 @@ class TestGetAgentEntriesIntegration:
 
         assert len(result) == 3
         # Should be sorted alphabetically
-        assert result[0][0] == "fid_coder"
-        assert result[1][0] == "code_reviewer"
+        assert result[0][0] == "code_reviewer"
+        assert result[1][0] == "fid_coder"
         assert result[2][0] == "pack_leader"
 
         # Check full tuple structure
         assert result[0] == (
-            "fid_coder",
-            "Fid Coder 🐶",
-            "A friendly AI coding assistant.",
+            "code_reviewer",
+            "Code Reviewer 🔍",
+            "Reviews code for quality and best practices.",
         )
 
 

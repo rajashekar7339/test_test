@@ -47,7 +47,6 @@ def get_commands_help():
     name="session",
     description="Show or rotate autosave session ID",
     usage="/session [id|new]",
-    aliases=["s"],
     category="session",
     detailed_help="""
     Manage autosave sessions.
@@ -89,7 +88,7 @@ def handle_session_command(command: str) -> bool:
     name="clear",
     description="Clear conversation history (rotates autosave; agent forgets prior turns)",
     usage="/clear",
-    aliases=["cls"],
+    hidden_aliases=["cls"],
     category="session",
     detailed_help="""
     Wipe the current conversation history so the agent starts fresh.

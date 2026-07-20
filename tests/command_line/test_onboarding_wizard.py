@@ -165,36 +165,6 @@ class TestOnboardingWizard:
         w.current_slide = 0
         assert w.get_options_for_slide() == []
 
-    def test_handle_option_select_chatgpt(self):
-        w = self._make_wizard()
-        w.current_slide = 1
-        opts = w.get_options_for_slide()
-        # Find chatgpt index
-        chatgpt_idx = next(i for i, (id_, _) in enumerate(opts) if id_ == "chatgpt")
-        w.selected_option = chatgpt_idx
-        w.handle_option_select()
-        assert w.trigger_oauth == "chatgpt"
-        assert w.model_choice == "chatgpt"
-
-    def test_handle_option_select_claude(self):
-        w = self._make_wizard()
-        w.current_slide = 1
-        opts = w.get_options_for_slide()
-        claude_idx = next(i for i, (id_, _) in enumerate(opts) if id_ == "claude")
-        w.selected_option = claude_idx
-        w.handle_option_select()
-        assert w.trigger_oauth == "claude"
-
-    def test_handle_option_select_api_keys(self):
-        w = self._make_wizard()
-        w.current_slide = 1
-        opts = w.get_options_for_slide()
-        idx = next(i for i, (id_, _) in enumerate(opts) if id_ == "api_keys")
-        w.selected_option = idx
-        w.handle_option_select()
-        assert w.trigger_oauth is None
-        assert w.model_choice == "api_keys"
-
     def test_handle_option_select_no_options(self):
         w = self._make_wizard()
         w.current_slide = 0  # no options

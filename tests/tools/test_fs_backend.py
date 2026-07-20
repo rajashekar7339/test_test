@@ -484,35 +484,6 @@ def test_facade_local_walk_and_symlink_cycle(tmp_path):
     assert n < 1000
 
 
-# --- gap B: the ACP adapter's topology methods (pure local os) --------------
-def test_acp_backend_topology(tmp_path):
-    from fid_coder.plugins.acp.io_delegation import DelegatedFileSystemBackend
-
-    be = DelegatedFileSystemBackend()
-    be.make_dirs(str(tmp_path / "sub"))
-    assert be.is_dir(str(tmp_path / "sub"))
-    f = tmp_path / "sub" / "x.txt"
-    f.write_text("data")
-    (tmp_path / "sub" / "nested").mkdir()  # a directory entry too
-    assert be.exists(str(f)) and be.is_file(str(f)) and not be.is_dir(str(f))
-    entries = {e.name: (e.is_dir, e.size) for e in be.list_dir(str(tmp_path / "sub"))}
-    assert entries == {"x.txt": (False, 4), "nested": (True, 0)}
-    be.delete_file(str(f))
-    assert not be.exists(str(f))
-
-
-def test_acp_backend_list_dir_errors(tmp_path):
-    from fid_coder.plugins.acp.io_delegation import DelegatedFileSystemBackend
-
-    be = DelegatedFileSystemBackend()
-    with pytest.raises(FileNotFoundError):
-        be.list_dir(str(tmp_path / "ghost"))
-    f = tmp_path / "f"
-    f.write_text("x")
-    with pytest.raises(NotADirectoryError):
-        be.list_dir(str(f))
-
-
 # --- gap C: file-mod tools + undo, WITH a backend installed -----------------
 def test_file_mod_tools_hit_backend(backend):
     from fid_coder.tools.file_modifications import (

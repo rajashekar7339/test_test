@@ -13,7 +13,9 @@ UX:
 The 15th option (Surprise Me) re-rolls a random palette every time.
 The 16th option (Restore Defaults) puts everything back to factory.
 
-Plays nice with /colors — same color pool, same config keys.
+Uses the same banner color pool and config keys as the (removed) /colors
+picker — banner colors set here still land in the same DEFAULT_BANNER_COLORS
+keys.
 """
 
 from __future__ import annotations
@@ -22,7 +24,7 @@ import asyncio
 import concurrent.futures
 
 from fid_coder.callbacks import register_callback
-from fid_coder.command_line.colors_menu import BANNER_DISPLAY_INFO
+from fid_coder.command_line.banner_display import BANNER_DISPLAY_INFO
 from fid_coder.config import (
     get_all_banner_colors,
     get_value,

@@ -657,19 +657,9 @@ class TestSessionCommand:
             call_str = str(mock_warn.call_args)
             assert "Usage" in call_str
 
-    def test_session_alias_works(self):
-        """Test /s alias works for /session."""
-        with (
-            patch(
-                "fid_coder.config.get_current_session_name",
-                return_value="test",
-            ),
-            patch("fid_coder.config.AUTOSAVE_DIR", "/tmp"),
-            patch("fid_coder.messaging.emit_info") as mock_emit,
-        ):
-            result = handle_command("/s")
-            assert result is True
-            mock_emit.assert_called()
+    def test_session_alias_s_removed(self):
+        """/s is no longer an alias for /session."""
+        assert get_command("s") is None
 
 
 class TestCompactCommand:
@@ -967,14 +957,13 @@ class TestCommandRegistry:
         cmd = get_command("help")
         assert cmd is not None
         assert cmd.name == "help"
-        assert "h" in cmd.aliases
+        assert "h" in cmd.hidden_aliases
 
     def test_session_command_registered(self):
         """Test that session command is registered."""
         cmd = get_command("session")
         assert cmd is not None
         assert cmd.name == "session"
-        assert "s" in cmd.aliases
 
     def test_show_command_registered(self):
         """Test that show command is registered."""
@@ -1036,7 +1025,7 @@ class TestCommandRegistry:
         """Test that model command is registered."""
         cmd = get_command("model")
         assert cmd is not None
-        assert "m" in cmd.aliases
+        assert "m" in cmd.hidden_aliases
 
     def test_mcp_command_registered(self):
         """Test that mcp command is registered."""
@@ -1044,17 +1033,13 @@ class TestCommandRegistry:
         assert cmd is not None
         assert cmd.category == "core"
 
-    def test_pin_model_command_registered(self):
-        """Test that pin_model command is registered."""
-        cmd = get_command("pin_model")
-        assert cmd is not None
-        assert cmd.category == "config"
+    def test_pin_model_command_removed(self):
+        """/pin_model is no longer a registered slash command."""
+        assert get_command("pin_model") is None
 
-    def test_unpin_command_registered(self):
-        """Test that unpin command is registered."""
-        cmd = get_command("unpin")
-        assert cmd is not None
-        assert cmd.category == "config"
+    def test_unpin_command_removed(self):
+        """/unpin is no longer a registered slash command."""
+        assert get_command("unpin") is None
 
     def test_generate_pr_description_command_registered(self):
         """Test that generate-pr-description command is registered."""
@@ -1330,189 +1315,13 @@ def test_edge_case_empty_after_command():
         mock_set_model.assert_not_called()
 
 
-# Note: Tests for newly migrated commands (set, agent, model, mcp, pin_model,
+# Note: Tests for newly migrated commands (set, agent, model, mcp,
 # generate-pr-description, dump_context, load_context, diff) already exist above
-# and in TestCommandRegistry. All logic has been verified to be identical to original.
-# See LOGIC_VERIFICATION.md for detailed verification.
+# and in TestCommandRegistry.
 
 
 def test_agent_command_alias_a_registered():
     """Test that /a alias is registered for agent command."""
     cmd = get_command("agent")
     assert cmd is not None
-    assert "a" in cmd.aliases
-
-
-def test_pin_model_command_case_insensitive_agent():
-    """Test that /pin_model works with uppercase agent name."""
-    test_agents = {"python_expert": "Python Expert", "code_reviewer": "Code Reviewer"}
-    test_models = ["gpt-5", "zai-glm-5.1-api"]
-
-    with (
-        patch(
-            "fid_coder.command_line.model_picker_completion.load_model_names",
-            return_value=test_models,
-        ),
-        patch("fid_coder.agents.json_agent.discover_json_agents", return_value={}),
-        patch(
-            "fid_coder.agents.agent_manager.get_agent_descriptions",
-            return_value=test_agents,
-        ),
-        patch("fid_coder.messaging.emit_success") as mock_emit_success,
-        patch("fid_coder.messaging.emit_error") as mock_emit_error,
-    ):
-        from fid_coder.command_line.config_commands import handle_pin_model_command
-
-        result = handle_pin_model_command("/pin_model PYTHON_EXPERT gpt-5")
-        assert result is True
-        # Should find agent despite uppercase
-        mock_emit_success.assert_called_once()
-        mock_emit_error.assert_not_called()
-
-
-def test_pin_model_unpin_case_insensitive():
-    """Test that (unpin) option works case-insensitively."""
-    test_agents = {"python_expert": "Python Expert", "code_reviewer": "Code Reviewer"}
-
-    with (
-        patch("fid_coder.agents.json_agent.discover_json_agents", return_value={}),
-        patch(
-            "fid_coder.agents.agent_manager.get_agent_descriptions",
-            return_value=test_agents,
-        ),
-        patch("fid_coder.messaging.emit_success") as mock_emit_success,
-        patch("fid_coder.messaging.emit_error") as mock_emit_error,
-        patch(
-            "fid_coder.command_line.config_commands.handle_unpin_command",
-            return_value=True,
-        ) as mock_unpin,
-    ):
-        from fid_coder.command_line.config_commands import handle_pin_model_command
-
-        result = handle_pin_model_command("/pin_model python_expert (UNPIN)")
-        assert result is True
-        # Should delegate to unpin command (case-insensitive (unpin))
-        mock_unpin.assert_called_once_with("/unpin python_expert")
-        mock_emit_success.assert_not_called()
-        mock_emit_error.assert_not_called()
-
-
-def test_unpin_command_case_insensitive_agent():
-    """Test that /unpin works with uppercase agent name."""
-    test_agents = {"python_expert": "Python Expert", "code_reviewer": "Code Reviewer"}
-
-    with (
-        patch("fid_coder.agents.json_agent.discover_json_agents", return_value={}),
-        patch(
-            "fid_coder.agents.agent_manager.get_agent_descriptions",
-            return_value=test_agents,
-        ),
-        patch("fid_coder.messaging.emit_success") as mock_emit_success,
-        patch("fid_coder.messaging.emit_error") as mock_emit_error,
-    ):
-        from fid_coder.command_line.config_commands import handle_unpin_command
-
-        result = handle_unpin_command("/unpin PYTHON_EXPERT")
-        assert result is True
-        # Should find agent despite uppercase
-        mock_emit_success.assert_called_once()
-        mock_emit_error.assert_not_called()
-
-
-def test_unpin_command_nonexistent_agent_case_insensitive():
-    """Test that /unpin works case-insensitively with existing agents."""
-    test_agents = {"python_expert": "Python Expert"}
-
-    with (
-        patch("fid_coder.agents.json_agent.discover_json_agents", return_value={}),
-        patch(
-            "fid_coder.agents.agent_manager.get_agent_descriptions",
-            return_value=test_agents,
-        ),
-        patch("fid_coder.messaging.emit_success") as mock_emit_success,
-        patch("fid_coder.messaging.emit_error") as mock_emit_error,
-    ):
-        from fid_coder.command_line.config_commands import handle_unpin_command
-
-        result = handle_unpin_command("/unpin PYTHON_EXPERT")
-        assert result is True
-        # Should work with uppercase agent that exists (case-insensitive match)
-        mock_emit_success.assert_called_once()
-        mock_emit_error.assert_not_called()
-
-
-def test_pin_model_completion_case_insensitive_agent():
-    """Test that pin model completion works case-insensitively for agents."""
-    from prompt_toolkit.document import Document
-
-    from fid_coder.command_line.pin_command_completion import PinModelCompleter
-
-    test_agents = ["python_expert", "Code_Reviewer", "JavaScript_Expert"]
-    test_models = ["gpt-5", "zai-glm-5.1-api"]
-
-    with (
-        patch(
-            "fid_coder.command_line.pin_command_completion.load_agent_names",
-            return_value=test_agents,
-        ),
-        patch(
-            "fid_coder.command_line.pin_command_completion.load_model_names",
-            return_value=test_models,
-        ),
-    ):
-        completer = PinModelCompleter(trigger="/pin_model")
-        document = Document("/pin_model PYTHON", cursor_position=15)
-        completions = list(completer.get_completions(document, None))
-
-        # Should find python_expert (case-insensitive match)
-        completion_texts = [c.text for c in completions]
-        assert "python_expert" in completion_texts
-
-
-def test_pin_model_completion_case_insensitive_model():
-    """Test that pin model completion works case-insensitively for models."""
-    from prompt_toolkit.document import Document
-
-    from fid_coder.command_line.pin_command_completion import PinModelCompleter
-
-    test_agents = ["python_expert", "code_reviewer"]
-    test_models = ["gpt-5", "zai-glm-5.1-api"]
-
-    with (
-        patch(
-            "fid_coder.command_line.pin_command_completion.load_agent_names",
-            return_value=test_agents,
-        ),
-        patch(
-            "fid_coder.command_line.pin_command_completion.load_model_names",
-            return_value=test_models,
-        ),
-    ):
-        completer = PinModelCompleter(trigger="/pin_model")
-        document = Document("/pin_model python_expert GPT", cursor_position=26)
-        completions = list(completer.get_completions(document, None))
-
-        # Should find GPT-5 (case-insensitive match)
-        completion_texts = [c.text for c in completions]
-        assert "gpt-5" in completion_texts
-
-
-def test_unpin_completion_case_insensitive_agent():
-    """Test that unpin completion works case-insensitively for agents."""
-    from prompt_toolkit.document import Document
-
-    from fid_coder.command_line.pin_command_completion import UnpinCompleter
-
-    test_agents = ["python_expert", "Code_Reviewer", "JavaScript_Expert"]
-
-    with patch(
-        "fid_coder.command_line.pin_command_completion.load_agent_names",
-        return_value=test_agents,
-    ):
-        completer = UnpinCompleter(trigger="/unpin")
-        document = Document("/unpin PYTHON", cursor_position=12)
-        completions = list(completer.get_completions(document, None))
-
-        # Should find python_expert (case-insensitive match)
-        completion_texts = [c.text for c in completions]
-        assert "python_expert" in completion_texts
+    assert "a" in cmd.hidden_aliases

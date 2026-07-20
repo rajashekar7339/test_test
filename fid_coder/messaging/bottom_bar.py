@@ -140,11 +140,13 @@ class BottomBar(TranscriptGuardMixin, BarPainterMixin):
         self._panel_lines: list[str] = []
         self._popup_lines: list[str] = []  # completion popup (over panel)
         self._popup_selected = -1
-        # Blank rows held below the prompt after the popup shrinks/closes
-        # (high-water residue). The prompt does NOT slide back down when
-        # the menu closes; the slack is reclaimed lazily by
+        # Blank rows held below the prompt while the popup shrinks (still
+        # open, fewer matches). The prompt does NOT slide back down mid-
+        # typing; the slack is reclaimed lazily by
         # ``notify_transcript_output`` so the prompt falls back into
-        # place while output is scrolling anyway.
+        # place while output is scrolling anyway. Fully closing the menu
+        # collapses this to 0 immediately (see ``set_popup_lines``) so no
+        # idle gap lingers under the prompt.
         self._popup_slack = 0
         self._reserved = 0  # reserved-row count while the region is up
         self._paste_armed = False  # bracketed paste (ESC[?2004h) state
@@ -274,17 +276,26 @@ class BottomBar(TranscriptGuardMixin, BarPainterMixin):
         the brand accent. While non-empty the popup takes precedence
         over the sub-agent panel (cached and restored on close).
 
-        Shrinking/closing does NOT slide the prompt back down: the
-        vacated rows are kept as blank ``_popup_slack`` so the prompt
-        stays put, then :meth:`notify_transcript_output` walks them
-        back one row at a time as transcript output scrolls in.
+        Shrinking while the menu stays open (fewer matches as you type)
+        keeps the vacated rows as blank ``_popup_slack`` so the prompt
+        doesn't jump mid-typing; :meth:`notify_transcript_output` walks
+        them back one row at a time as transcript output scrolls in.
+        Closing the menu entirely (``lines`` empty) collapses any slack
+        immediately instead — otherwise the idle gap between the prompt
+        and the status row would linger indefinitely with nothing to
+        reclaim it.
         """
         cleaned = [_sanitize(str(line)) for line in (lines or [])][:POPUP_MAX_ROWS]
         with self._lock:
-            old_block = len(self._popup_lines) + self._popup_slack
-            self._popup_lines = cleaned
-            self._popup_selected = selected
-            self._popup_slack = max(0, old_block - len(cleaned))
+            if not cleaned:
+                self._popup_lines = []
+                self._popup_selected = selected
+                self._popup_slack = 0
+            else:
+                old_block = len(self._popup_lines) + self._popup_slack
+                self._popup_lines = cleaned
+                self._popup_selected = selected
+                self._popup_slack = max(0, old_block - len(cleaned))
             self._sync_reserved(self._popup_seq)
 
     @contextmanager

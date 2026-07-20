@@ -215,11 +215,11 @@ class TestAgentCompleter:
         c = AgentCompleter()
         with (
             patch(
-                "fid_coder.command_line.pin_command_completion.load_agent_names",
+                "fid_coder.command_line.agent_completion_helpers.load_agent_names",
                 return_value=["agent1", "agent2"],
             ),
             patch(
-                "fid_coder.command_line.pin_command_completion._get_agent_display_meta",
+                "fid_coder.command_line.agent_completion_helpers._get_agent_display_meta",
                 return_value="default",
             ),
         ):
@@ -232,11 +232,11 @@ class TestAgentCompleter:
         c = AgentCompleter()
         with (
             patch(
-                "fid_coder.command_line.pin_command_completion.load_agent_names",
+                "fid_coder.command_line.agent_completion_helpers.load_agent_names",
                 return_value=["agent1", "bot1"],
             ),
             patch(
-                "fid_coder.command_line.pin_command_completion._get_agent_display_meta",
+                "fid_coder.command_line.agent_completion_helpers._get_agent_display_meta",
                 return_value="default",
             ),
         ):
@@ -248,7 +248,7 @@ class TestAgentCompleter:
 
         c = AgentCompleter()
         with patch(
-            "fid_coder.command_line.pin_command_completion.load_agent_names",
+            "fid_coder.command_line.agent_completion_helpers.load_agent_names",
             side_effect=Exception("fail"),
         ):
             completions = list(c.get_completions(self._make_doc("/agent "), None))

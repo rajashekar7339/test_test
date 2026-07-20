@@ -10,14 +10,14 @@ import random
 from itertools import cycle
 from typing import Callable
 
-from fid_coder.command_line.colors_menu import BANNER_COLORS, BANNER_DISPLAY_INFO
+from fid_coder.command_line.banner_display import BANNER_COLORS, BANNER_DISPLAY_INFO
 from fid_coder.config import set_banner_color
 
 from . import bundled_palettes as bp
 from . import content_styles as cs
 from . import rich_themes as rt
 
-# Palette = the Rich color values from /colors (deduped, sorted for determinism)
+# Palette = the curated Rich color values (deduped, sorted for determinism)
 PALETTE: list[str] = sorted(set(BANNER_COLORS.values()))
 BANNER_KEYS: list[str] = list(BANNER_DISPLAY_INFO.keys())
 

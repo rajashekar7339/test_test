@@ -33,50 +33,15 @@ DEBOUNCE_S = 0.05
 def build_completer():
     """The classic prompt's completer stack, as pure logic.
 
-    NOTE: this list REPLICATES the inline construction in
-    ``command_line.prompt_toolkit_completion.get_input_with_combined_completion``
-    (the source of truth) — it's built inline there, so it can't be
-    imported without refactoring command_line/, which is off-limits.
-    Keep the two in sync when completers are added.
+    Delegates to ``command_line.prompt_toolkit_completion.build_completer_stack``
+    (the single source of truth) so this input path can never drift out of
+    sync with the prompt_toolkit ``PromptSession`` completer list.
     """
-    from prompt_toolkit.completion import merge_completers
-
-    from fid_coder.command_line.file_path_completion import FilePathCompleter
-    from fid_coder.command_line.load_context_completion import LoadContextCompleter
-    from fid_coder.command_line.mcp_completion import MCPCompleter
-    from fid_coder.command_line.model_picker_completion import ModelNameCompleter
-    from fid_coder.command_line.pin_command_completion import (
-        PinCompleter,
-        UnpinCompleter,
-    )
     from fid_coder.command_line.prompt_toolkit_completion import (
-        AgentCompleter,
-        CDCompleter,
-        SetCompleter,
-        SlashCompleter,
+        build_completer_stack,
     )
-    from fid_coder.command_line.skills_completion import SkillsCompleter
 
-    return merge_completers(
-        [
-            FilePathCompleter(symbol="@"),
-            ModelNameCompleter(trigger="/model"),
-            ModelNameCompleter(trigger="/m"),
-            CDCompleter(trigger="/cd"),
-            SetCompleter(trigger="/set"),
-            LoadContextCompleter(trigger="/load_context"),
-            PinCompleter(trigger="/pin_model"),
-            UnpinCompleter(trigger="/unpin"),
-            AgentCompleter(trigger="/agent"),
-            AgentCompleter(trigger="/a"),
-            AgentCompleter(trigger="/switch-agent"),
-            AgentCompleter(trigger="/sa"),
-            AgentCompleter(trigger="/fork", prefix="@"),
-            MCPCompleter(trigger="/mcp"),
-            SkillsCompleter(trigger="/skills"),
-            SlashCompleter(),
-        ]
-    )
+    return build_completer_stack()
 
 
 def query_completions(completer, text: str, cursor: int) -> List["Item"]:

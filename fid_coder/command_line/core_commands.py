@@ -30,8 +30,8 @@ def get_commands_help():
 @register_command(
     name="help",
     description="Show this help message",
-    usage="/help, /h",
-    aliases=["h"],
+    usage="/help",
+    hidden_aliases=["h"],
     category="core",
 )
 def handle_help_command(command: str) -> bool:
@@ -141,8 +141,8 @@ def handle_tools_command(command: str) -> bool:
 @register_command(
     name="paste",
     description="Paste image from clipboard (same as F3, or Ctrl+V with image)",
-    usage="/paste, /clipboard, /cb",
-    aliases=["clipboard", "cb"],
+    usage="/paste",
+    hidden_aliases=["clipboard", "cb"],
     category="core",
 )
 def handle_paste_command(command: str) -> bool:
@@ -221,7 +221,7 @@ def handle_tutorial_command(command: str) -> bool:
 @register_command(
     name="exit",
     description="Exit interactive mode",
-    usage="/exit, /quit",
+    usage="/exit",
     aliases=["quit"],
     category="core",
 )
@@ -242,8 +242,8 @@ def handle_exit_command(command: str) -> bool:
 @register_command(
     name="agent",
     description="Switch to a different agent or show available agents",
-    usage="/agent <name>, /a <name>",
-    aliases=["a", "agents"],
+    usage="/agent <name>",
+    hidden_aliases=["a", "agents"],
     category="core",
 )
 def handle_agent_command(command: str) -> bool:
@@ -430,8 +430,8 @@ def handle_agent_command(command: str) -> bool:
 @register_command(
     name="model",
     description="Set active model",
-    usage="/model, /m <model>",
-    aliases=["m"],
+    usage="/model <model>",
+    hidden_aliases=["m"],
     category="core",
 )
 def handle_model_command(command: str) -> bool:
@@ -501,25 +501,45 @@ def handle_model_command(command: str) -> bool:
 
 @register_command(
     name="add_model",
-    description="Deprecated — use /copilot-login instead",
+    description="Browse and add GitHub Copilot models",
     usage="/add_model",
     category="core",
 )
 def handle_add_model_command(command: str) -> bool:
-    """Point users at GitHub Copilot login (multi-provider catalog removed)."""
-    emit_info(
-        "Fid Coder uses GitHub Copilot only.\n"
-        "   Run /copilot-login to sign in and register models.\n"
-        "   Then use /model to pick a Copilot model."
-    )
-    return True
+    """Launch interactive Copilot model browser.
+
+    Same threading pattern as ``/model``: command handlers run under an
+    async loop, so the picker is executed via ``asyncio.run`` in a worker
+    thread.
+    """
+    import asyncio
+    import concurrent.futures
+
+    from fid_coder.plugins.copilot_auth.add_model_menu import interactive_model_picker
+    from fid_coder.tools.command_runner import set_awaiting_user_input
+
+    set_awaiting_user_input(True)
+    try:
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(lambda: asyncio.run(interactive_model_picker()))
+            result = future.result(timeout=300)
+        if result:
+            emit_info("Successfully added model configuration")
+        return True
+    except KeyboardInterrupt:
+        return True
+    except Exception as e:
+        emit_error(f"Failed to launch model browser: {e}")
+        return False
+    finally:
+        set_awaiting_user_input(False)
 
 
 @register_command(
     name="model_settings",
     description="Configure per-model settings (temperature, seed, etc.)",
     usage="/model_settings [--show [model_name]]",
-    aliases=["ms"],
+    hidden_aliases=["ms"],
     category="config",
 )
 def handle_model_settings_command(command: str) -> bool:
@@ -669,7 +689,6 @@ def handle_generate_pr_description_command(command: str) -> str:
     name="undo",
     description="Undo the last file modification made by the agent",
     usage="/undo",
-    aliases=["u", "undo_last"],
     category="core",
 )
 def handle_undo_command(command: str) -> bool:

@@ -41,11 +41,11 @@ logger = logging.getLogger(__name__)
 
 _FID = spinners.FID  # DOG FACE emoji, escape-spelled (repo emoji filter)
 
-#: The classic kennel-bounce (the ``fid`` entry in the spinner catalogue).
+#: Frames for the configured default spinner (``aesthetic``).
 FRAMES = spinners.BUILTIN_SPINNERS[spinners.DEFAULT_SPINNER].frames
 
-#: Sourced from the catalogue so the stock fid's speed has exactly one
-#: home; kept as a module constant so tests can monkeypatch the tempo.
+#: Sourced from the catalogue so the default spinner's speed has exactly
+#: one home; kept as a module constant so tests can monkeypatch the tempo.
 _TICK_INTERVAL_S = spinners.BUILTIN_SPINNERS[spinners.DEFAULT_SPINNER].interval
 
 _lock = threading.Lock()
@@ -136,22 +136,23 @@ async def _tick_loop() -> None:
 def _current_frames_and_interval():
     """The active spinner's frames + interval, re-read every tick.
 
-    The stock builtin fid routes through the module constants so tests
-    (and nostalgic monkeypatchers) can tweak ``_TICK_INTERVAL_S``; any
-    other choice -- including a user-file override of "fid" -- uses
-    the catalogue values. A broken catalogue degrades to the classic.
+    The stock builtin default routes through the module constants so
+    tests (and nostalgic monkeypatchers) can tweak ``_TICK_INTERVAL_S``;
+    any other choice -- including a user-file override of the default
+    name -- uses the catalogue values. A broken catalogue degrades to
+    the module constants.
     """
     try:
         active = spinners.get_active_spinner()
-        is_stock_fid = (
+        is_stock_default = (
             active.name == spinners.DEFAULT_SPINNER
             and active.source == "builtin"
             and active.interval
             == spinners.BUILTIN_SPINNERS[
                 spinners.DEFAULT_SPINNER
-            ].interval  # a speed override on the fid still counts as custom
+            ].interval  # a speed override on the default still counts as custom
         )
-        if not is_stock_fid:
+        if not is_stock_default:
             return active.frames, active.interval
     except Exception:
         logger.debug("active spinner lookup failed", exc_info=True)

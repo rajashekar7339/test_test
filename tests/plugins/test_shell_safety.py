@@ -24,22 +24,11 @@ from fid_coder.plugins.shell_safety.register_callbacks import (
 class TestOAuthModelDetection:
     """Test OAuth model detection."""
 
-    def test_is_oauth_model_anthropic(self):
-        """Test detection of Anthropic OAuth models."""
-        assert is_oauth_model("claude-code-123")
-        assert is_oauth_model("claude-code-v1.0")
-        assert is_oauth_model("claude-code-latest")
-
-    def test_is_oauth_model_openai(self):
-        """Test detection of OpenAI OAuth models."""
-        assert is_oauth_model("chatgpt-4")
-        assert is_oauth_model("chatgpt-gpt4")
-        assert is_oauth_model("chatgpt-pro")
-
-    def test_is_oauth_model_google(self):
-        """Test detection of Google OAuth models."""
-        assert is_oauth_model("gemini-oauth")
-        assert is_oauth_model("gemini-oauth-pro")
+    def test_is_oauth_model_copilot(self):
+        """Test detection of Copilot OAuth models."""
+        assert is_oauth_model("copilot-claude-3")
+        assert is_oauth_model("copilot-gpt-4")
+        assert is_oauth_model("copilot-gemini-pro")
 
     def test_is_not_oauth_model(self):
         """Test detection of non-OAuth models."""
@@ -47,6 +36,8 @@ class TestOAuthModelDetection:
         assert not is_oauth_model("gpt-4")
         assert not is_oauth_model("gemini-pro")
         assert not is_oauth_model("local-llm")
+        assert not is_oauth_model("claude-code-123")
+        assert not is_oauth_model("chatgpt-4")
 
     def test_is_oauth_model_none(self):
         """Test with None model name."""
@@ -58,9 +49,9 @@ class TestOAuthModelDetection:
 
     def test_is_oauth_model_case_sensitive(self):
         """Test that model name is case-sensitive."""
-        assert is_oauth_model("claude-code-123")
-        assert not is_oauth_model("CLAUDE-CODE-123")
-        assert not is_oauth_model("Claude-Code-123")
+        assert is_oauth_model("copilot-claude-3")
+        assert not is_oauth_model("COPILOT-claude-3")
+        assert not is_oauth_model("Copilot-claude-3")
 
 
 class TestRiskLevelComparison:

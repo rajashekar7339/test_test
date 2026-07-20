@@ -486,15 +486,16 @@ class TestHandleHooksCommand:
         result = self._call("/skills", "skills")
         assert result is None
 
-    def test_alias_hook_is_handled(self, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        with patch("fid_coder.messaging.emit_info"):
-            with patch(
-                "fid_coder.plugins.hook_manager.config._load_global_hooks_config",
-                return_value={},
-            ):
-                result = self._call("/hook list", "hook")
-        assert result is True
+    def test_alias_hook_removed(self):
+        """/hook is no longer an alias for /hooks."""
+        from fid_coder.plugins.hook_manager.register_callbacks import (
+            _hooks_command_help,
+        )
+
+        assert self._call("/hook list", "hook") is None
+        help_names = [name for name, _ in _hooks_command_help()]
+        assert "hook" not in help_names
+        assert "hooks" in help_names
 
     def test_list_subcommand_returns_true(self, tmp_settings, monkeypatch):
         monkeypatch.chdir(tmp_settings.parent.parent)
@@ -619,13 +620,13 @@ class TestHooksCommandHelp:
         names = [name for name, _ in _hooks_command_help()]
         assert "hooks" in names
 
-    def test_hook_alias_advertised(self):
+    def test_hook_alias_not_advertised(self):
         from fid_coder.plugins.hook_manager.register_callbacks import (
             _hooks_command_help,
         )
 
         names = [name for name, _ in _hooks_command_help()]
-        assert "hook" in names
+        assert "hook" not in names
 
 
 # ---------------------------------------------------------------------------

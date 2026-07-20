@@ -1,6 +1,6 @@
 """Wire emoji_filter into the runtime.
 
-Three points of contact, all gated by ``config.is_enabled()``:
+Always on. Two points of contact:
 
 1. ``pre_tool_call`` callback — mutates the *args dict in-place* for file-write
    and shell tools before the tool actually runs. We only touch text destined
@@ -13,9 +13,6 @@ Three points of contact, all gated by ``config.is_enabled()``:
    streamed text content. ``ThinkingPart`` / ``ThinkingPartDelta`` are
    deliberately untouched.
 
-3. ``custom_command`` / ``custom_command_help`` — a tiny ``/emoji-filter``
-   slash command so the user can flip the switch without editing fid.cfg.
-
 Failures here must never crash the app: every patch site is wrapped.
 """
 
@@ -26,7 +23,7 @@ from typing import Any
 
 from fid_coder.callbacks import register_callback
 
-from .config import is_enabled, set_enabled
+from .config import is_enabled
 from .stripper import strip_emojis
 
 logger = logging.getLogger(__name__)
@@ -149,8 +146,7 @@ def _on_pre_tool_call(
 
 
 # --- Streaming patch ---------------------------------------------------------
-# We patch TextPart and TextPartDelta __init__ exactly once. The patched init
-# checks ``is_enabled()`` at call time so the user can toggle without restart.
+# We patch TextPart and TextPartDelta __init__ exactly once.
 
 _STREAM_PATCH_FLAG = "_emoji_filter_patched"
 
@@ -194,48 +190,7 @@ def _on_startup() -> None:
     _install_streaming_patch()
 
 
-# --- /emoji-filter slash command --------------------------------------------
-
-_COMMAND_NAMES = {"emoji-filter", "emojifilter"}
-
-
-def _custom_help():
-    return [
-        ("emoji-filter", "Show / toggle the emoji filter (on|off|status)"),
-    ]
-
-
-def _handle_command(command: str, name: str):
-    if name not in _COMMAND_NAMES:
-        return None
-
-    from fid_coder.messaging import emit_info
-
-    parts = command.split(maxsplit=1)
-    arg = parts[1].strip().lower() if len(parts) == 2 else "status"
-
-    if arg in ("on", "enable", "enabled", "true", "1"):
-        set_enabled(True)
-        emit_info(
-            "emoji_filter: ON (emojis will be stripped from outputs/file writes/shell)"
-        )
-        return True
-    if arg in ("off", "disable", "disabled", "false", "0"):
-        set_enabled(False)
-        emit_info("emoji_filter: OFF (emojis pass through untouched)")
-        return True
-    if arg in ("status", ""):
-        state = "ON" if is_enabled() else "OFF"
-        emit_info(f"emoji_filter: {state}")
-        return True
-
-    emit_info("Usage: /emoji-filter [on|off|status]")
-    return True
-
-
 # --- Registration ------------------------------------------------------------
 
 register_callback("startup", _on_startup)
 register_callback("pre_tool_call", _on_pre_tool_call)
-register_callback("custom_command_help", _custom_help)
-register_callback("custom_command", _handle_command)

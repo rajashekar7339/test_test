@@ -1,6 +1,6 @@
 """Full coverage tests for agents/agent_creator_agent.py."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from fid_coder.agents.agent_creator_agent import AgentCreatorAgent
 
@@ -43,50 +43,12 @@ class TestAgentCreatorAgent:
             assert "read_file" in prompt
             assert "gpt-4" in prompt
 
-    def test_get_system_prompt_with_uc_tools(self):
-        agent = AgentCreatorAgent()
-        mock_tool = MagicMock()
-        mock_tool.full_name = "api.weather"
-        mock_tool.meta.enabled = True
-        mock_tool.meta.description = "Weather tool"
-
-        mock_registry = MagicMock()
-        mock_registry.list_tools.return_value = [mock_tool]
-
-        with (
-            patch(
-                "fid_coder.agents.agent_creator_agent.get_available_tool_names",
-                return_value=[],
-            ),
-            patch(
-                "fid_coder.agents.agent_creator_agent.get_user_agents_directory",
-                return_value="/tmp",
-            ),
-            patch("fid_coder.agents.agent_creator_agent.ModelFactory") as mock_factory,
-            patch(
-                "fid_coder.plugins.universal_constructor.registry.get_registry",
-                return_value=mock_registry,
-            ),
-        ):
-            mock_factory.load_config.return_value = {}
-            prompt = agent.get_system_prompt()
-            assert "api.weather" in prompt
-
     def test_get_available_tools(self):
         agent = AgentCreatorAgent()
-        with patch(
-            "fid_coder.config.get_universal_constructor_enabled", return_value=True
-        ):
-            tools = agent.get_available_tools()
-            assert "universal_constructor" in tools
-
-    def test_get_available_tools_uc_disabled(self):
-        agent = AgentCreatorAgent()
-        with patch(
-            "fid_coder.config.get_universal_constructor_enabled", return_value=False
-        ):
-            tools = agent.get_available_tools()
-            assert "universal_constructor" not in tools
+        tools = agent.get_available_tools()
+        assert "list_files" in tools
+        assert "invoke_agent" in tools
+        assert "universal_constructor" not in tools
 
     def test_validate_agent_json_valid(self):
         agent = AgentCreatorAgent()

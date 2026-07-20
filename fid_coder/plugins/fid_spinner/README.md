@@ -34,9 +34,9 @@ Every builtin runs at 0.2s per frame by default — per-spinner tuning is
 what the picker's speed keys and `spinners.json` tweaks are for. The
 one exception: the classic `fid` trots at 0.06s out of the box.
 
-The fid pack: `fid` (default), `bone`, `zoomies`, `paws`, `dots`.
+The fid pack: `fid`, `bone`, `zoomies`, `paws`, `dots`.
 
-Plus a cli-spinners-style pack: `aesthetic`, `binary`, `bouncingBall`,
+Plus a cli-spinners-style pack: `aesthetic` (default), `binary`, `bouncingBall`,
 `bouncingBar`, `chevrons`, `dots8Bit`, `dotsCircle`, `dotsWide`,
 `fistBump`, `growHorizontal`, `growVertical`, `noise`, `pong`, `sand`.
 

@@ -119,13 +119,6 @@ class TestBooleanGetters:
         cp_config.set_auto_save_session(False)
         assert cp_config.get_auto_save_session() is False
 
-    def test_get_frontend_emitter_enabled_default(self):
-        assert cp_config.get_frontend_emitter_enabled() is True
-
-    def test_get_frontend_emitter_enabled_false(self):
-        cp_config.set_config_value("frontend_emitter_enabled", "false")
-        assert cp_config.get_frontend_emitter_enabled() is False
-
 
 # ---------------------------------------------------------------------------
 # Safety permission level
@@ -252,20 +245,6 @@ class TestNumericGetters:
     def test_get_max_saved_sessions_invalid(self):
         cp_config.set_config_value("max_saved_sessions", "bad")
         assert cp_config.get_max_saved_sessions() == 20
-
-    def test_get_frontend_emitter_max_recent_events_default(self):
-        assert cp_config.get_frontend_emitter_max_recent_events() == 100
-
-    def test_get_frontend_emitter_max_recent_events_invalid(self):
-        cp_config.set_config_value("frontend_emitter_max_recent_events", "bad")
-        assert cp_config.get_frontend_emitter_max_recent_events() == 100
-
-    def test_get_frontend_emitter_queue_size_default(self):
-        assert cp_config.get_frontend_emitter_queue_size() == 100
-
-    def test_get_frontend_emitter_queue_size_invalid(self):
-        cp_config.set_config_value("frontend_emitter_queue_size", "bad")
-        assert cp_config.get_frontend_emitter_queue_size() == 100
 
 
 # ---------------------------------------------------------------------------

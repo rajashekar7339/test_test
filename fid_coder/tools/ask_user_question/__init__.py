@@ -2,7 +2,7 @@
 
 This tool allows agents to ask users interactive multiple-choice questions
 through a terminal TUI interface. Uses prompt_toolkit for the split-panel
-UI similar to the /colors command.
+UI similar to the /theme picker.
 """
 
 from .handler import ask_user_question

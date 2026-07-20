@@ -39,7 +39,6 @@ from fid_coder.command_line.model_picker_completion import (
     ModelNameCompleter,
     get_active_model,
 )
-from fid_coder.command_line.pin_command_completion import PinCompleter, UnpinCompleter
 from fid_coder.command_line.skills_completion import SkillsCompleter
 from fid_coder.command_line.utils import list_directory
 from fid_coder.callbacks import on_prompt_text_color, on_prompt_toolkit_style
@@ -380,7 +379,9 @@ class AgentCompleter(Completer):
 
         # Load all available agent names
         try:
-            from fid_coder.command_line.pin_command_completion import load_agent_names
+            from fid_coder.command_line.agent_completion_helpers import (
+                load_agent_names,
+            )
 
             agent_names = load_agent_names()
         except Exception:
@@ -389,7 +390,7 @@ class AgentCompleter(Completer):
 
         # Filter and yield agent completions
         try:
-            from fid_coder.command_line.pin_command_completion import (
+            from fid_coder.command_line.agent_completion_helpers import (
                 _get_agent_display_meta,
             )
         except ImportError:
@@ -696,12 +697,16 @@ def _complete_or_cycle(buffer) -> None:
         buffer.complete_next()
 
 
-async def get_input_with_combined_completion(
-    prompt_str=">>> ", history_file: Optional[str] = None
-) -> str:
-    # Use SafeFileHistory to handle encoding errors gracefully on Windows
-    history = SafeFileHistory(history_file) if history_file else None
-    completer = merge_completers(
+def build_completer_stack():
+    """The classic prompt's full completer stack.
+
+    Single source of truth for both input paths: this prompt_toolkit
+    ``PromptSession`` (below) and the persistent raw editor's
+    ``CompletionEngine`` (``fid_coder.messaging.editor_completion``), which
+    drives the same completers as pure logic without a prompt_toolkit UI.
+    Keep additions here — never duplicate the list at the other call site.
+    """
+    return merge_completers(
         [
             FilePathCompleter(symbol="@"),
             ModelNameCompleter(trigger="/model"),
@@ -709,8 +714,6 @@ async def get_input_with_combined_completion(
             CDCompleter(trigger="/cd"),
             SetCompleter(trigger="/set"),
             LoadContextCompleter(trigger="/load_context"),
-            PinCompleter(trigger="/pin_model"),
-            UnpinCompleter(trigger="/unpin"),
             AgentCompleter(trigger="/agent"),
             AgentCompleter(trigger="/a"),
             AgentCompleter(trigger="/switch-agent"),
@@ -721,6 +724,14 @@ async def get_input_with_combined_completion(
             SlashCompleter(),
         ]
     )
+
+
+async def get_input_with_combined_completion(
+    prompt_str=">>> ", history_file: Optional[str] = None
+) -> str:
+    # Use SafeFileHistory to handle encoding errors gracefully on Windows
+    history = SafeFileHistory(history_file) if history_file else None
+    completer = build_completer_stack()
     # Add custom key bindings and multiline toggle
     bindings = KeyBindings()
 

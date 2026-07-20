@@ -3,7 +3,7 @@
 This plugin:
 1. Injects available skills into system prompts
 2. Registers skill-related tools
-3. Provides /skills slash command (and alias /skill)
+3. Provides /skills slash command
 """
 
 import logging
@@ -91,11 +91,10 @@ def _register_skills_tools() -> List[Dict[str, Any]]:
 
 
 # ---------------------------------------------------------------------------
-# Slash command: /skills (and alias /skill)
+# Slash command: /skills
 # ---------------------------------------------------------------------------
 
 _COMMAND_NAME = "skills"
-_ALIASES = ("skill",)
 
 
 def _skills_command_help() -> List[Tuple[str, str]]:
@@ -104,7 +103,6 @@ def _skills_command_help() -> List[Tuple[str, str]]:
 
     entries: List[Tuple[str, str]] = [
         ("skills", "Manage agent skills – browse, enable, disable, install"),
-        ("skill", "Alias for /skills"),
     ]
     # Append per-skill commands so they show up in /help & tab-completion.
     entries.extend(skill_command_help())
@@ -112,7 +110,7 @@ def _skills_command_help() -> List[Tuple[str, str]]:
 
 
 def _handle_skills_command(command: str, name: str) -> Optional[Any]:
-    """Handle /skills and /skill slash commands.
+    """Handle /skills slash commands.
 
     Sub-commands:
         /skills          – Launch interactive TUI menu
@@ -124,7 +122,7 @@ def _handle_skills_command(command: str, name: str) -> Optional[Any]:
         /skills refresh  – Force skill re-discovery and refresh local cache
         /skills help     – Show skills command help
     """
-    if name not in (_COMMAND_NAME, *_ALIASES):
+    if name != _COMMAND_NAME:
         # Not the /skills meta-command — maybe it's an individual skill?
         from .skill_commands import handle_skill_command
 

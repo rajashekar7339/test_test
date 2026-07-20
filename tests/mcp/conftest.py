@@ -230,10 +230,20 @@ def mock_get_current_agent():
     """Mock get_current_agent function."""
     mock_agent = Mock()
     mock_agent.reload_code_generation_agent = Mock()
+    mock_agent.update_mcp_tool_cache_sync = Mock()
 
-    with patch("fid_coder.agents.get_current_agent", return_value=mock_agent) as mock:
-        mock.agent = mock_agent
-        yield mock
+    with (
+        patch(
+            "fid_coder.command_line.mcp.start_command.get_current_agent",
+            return_value=mock_agent,
+        ) as start_patch,
+        patch(
+            "fid_coder.command_line.mcp.stop_command.get_current_agent",
+            return_value=mock_agent,
+        ),
+    ):
+        start_patch.agent = mock_agent
+        yield start_patch
 
 
 @pytest.fixture

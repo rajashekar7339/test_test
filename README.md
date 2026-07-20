@@ -34,7 +34,8 @@ uv run --no-editable fid-coder -i
 
 ```text
 /copilot-login
-/model
+/add_model    # browse Copilot models (Claude, GPT, …) and add one
+/model        # switch among registered models
 ```
 
 ## Browser agent (optional)

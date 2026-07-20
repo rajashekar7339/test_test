@@ -1,6 +1,6 @@
 """Terminal UI for ask_user_question tool.
 
-Uses prompt_toolkit for a split-panel TUI similar to the /colors command.
+Uses prompt_toolkit for a split-panel TUI similar to the /theme picker.
 Left panel (20%): Question headers/tabs
 Right panel (80%): Current question with options
 

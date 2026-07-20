@@ -505,25 +505,28 @@ class TestListFilesNonRecursiveMode:
 class TestHomeDirectoryDetection:
     """Test home directory detection with context parameter."""
 
-    def test_home_dir_with_context_limits_recursion(self):
-        """Test that home directory detection limits recursion when context is provided."""
-        # Get actual home directory
-        home = os.path.expanduser("~")
+    def test_home_dir_with_context_limits_recursion(self, tmp_path):
+        """Test that home directory detection limits recursion when context is provided.
 
-        # Create a mock context (non-None)
+        Uses a temp directory + patches instead of the real home: a home with a
+        top-level .git is treated as a project and would recurse the whole tree.
+        """
         mock_context = MagicMock()
 
-        # Listing home with context should auto-limit recursion
-        result = _list_files(mock_context, home, recursive=True)
+        with (
+            patch(
+                "fid_coder.tools.file_operations.is_likely_home_directory",
+                return_value=True,
+            ),
+            patch(
+                "fid_coder.tools.file_operations.is_project_directory",
+                return_value=False,
+            ),
+        ):
+            result = _list_files(mock_context, str(tmp_path), recursive=True)
 
-        # Should contain warning about limiting recursion
-        # (unless it's actually a project directory)
-        if not is_project_directory(home):
-            assert (
-                "limiting" in result.content.lower()
-                or "non-recursive" in result.content.lower()
-                or result.content is not None
-            )
+        assert "limiting" in result.content.lower()
+        assert "non-recursive" in result.content.lower()
 
     def test_home_subdir_detection(self):
         """Test detection of common home subdirectories."""

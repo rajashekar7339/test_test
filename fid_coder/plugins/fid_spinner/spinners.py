@@ -30,7 +30,7 @@ value into spinners.json -- user land keeps its own numbers, no
 shadow-override layer to reason about.
 
 Everything here fails gracefully: a broken JSON file or a vanished
-spinner name always degrades to the classic kennel-bounce fid.
+spinner name always degrades to the default (``aesthetic``).
 """
 
 from __future__ import annotations
@@ -50,7 +50,7 @@ from .builtin_frames import EXTRA_SPECS
 logger = logging.getLogger(__name__)
 
 CONFIG_KEY = "spinner_style"
-DEFAULT_SPINNER = "fid"
+DEFAULT_SPINNER = "aesthetic"
 USER_SPINNERS_FILE = os.path.join(CONFIG_DIR, "spinners.json")
 
 MIN_INTERVAL = 0.02  # 50 fps -- any faster is just terminal abuse
@@ -107,7 +107,7 @@ _BUILTIN_SPECS = {
     "fid": (
         _kennel_bounce(FID),
         _FID_INTERVAL,
-        "the classic kennel bounce (default)",
+        "the classic kennel bounce",
     ),
     "bone": (
         _kennel_bounce(_BONE),

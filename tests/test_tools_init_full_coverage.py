@@ -9,7 +9,6 @@ class TestToolRegistry:
 
         assert "list_files" in TOOL_REGISTRY
         assert "edit_file" in TOOL_REGISTRY
-        assert "universal_constructor" in TOOL_REGISTRY
 
     def test_get_available_tool_names(self):
         from fid_coder.tools import get_available_tool_names
@@ -184,27 +183,6 @@ class TestRegisterToolsForAgent:
             register_tools_for_agent(agent, ["agent_share_your_reasoning"])
             mock_warn.assert_not_called()
 
-    def test_uc_tool_prefix(self):
-        from fid_coder.tools import register_tools_for_agent
-
-        agent = MagicMock()
-        with (
-            patch(
-                "fid_coder.config.get_universal_constructor_enabled", return_value=True
-            ),
-            patch("fid_coder.tools._register_uc_tool_wrapper"),
-        ):
-            register_tools_for_agent(agent, ["uc:my_tool"])
-
-    def test_uc_tool_prefix_disabled(self):
-        from fid_coder.tools import register_tools_for_agent
-
-        agent = MagicMock()
-        with patch(
-            "fid_coder.config.get_universal_constructor_enabled", return_value=False
-        ):
-            register_tools_for_agent(agent, ["uc:my_tool"])
-
 
 class TestRegisterAllTools:
     def test_register_all(self):
@@ -217,75 +195,3 @@ class TestRegisterAllTools:
             "fid_coder.config.get_universal_constructor_enabled", return_value=False
         ):
             register_all_tools(agent)
-
-
-class TestRegisterUcToolWrapper:
-    def test_tool_not_found(self):
-        from fid_coder.tools import _register_uc_tool_wrapper
-
-        agent = MagicMock()
-        mock_registry = MagicMock()
-        mock_registry.get_tool.return_value = None
-        with (
-            patch("fid_coder.tools.emit_warning"),
-            patch(
-                "fid_coder.plugins.universal_constructor.registry.get_registry",
-                return_value=mock_registry,
-            ),
-        ):
-            _register_uc_tool_wrapper(agent, "nonexistent")
-
-    def test_function_not_found(self):
-        from fid_coder.tools import _register_uc_tool_wrapper
-
-        agent = MagicMock()
-        mock_registry = MagicMock()
-        mock_tool = MagicMock()
-        mock_tool.meta.description = "desc"
-        mock_tool.docstring = "doc"
-        mock_registry.get_tool.return_value = mock_tool
-        mock_registry.get_tool_function.return_value = None
-        with (
-            patch("fid_coder.tools.emit_warning"),
-            patch(
-                "fid_coder.plugins.universal_constructor.registry.get_registry",
-                return_value=mock_registry,
-            ),
-        ):
-            _register_uc_tool_wrapper(agent, "my_tool")
-
-    def test_registry_exception(self):
-        from fid_coder.tools import _register_uc_tool_wrapper
-
-        agent = MagicMock()
-        with (
-            patch("fid_coder.tools.emit_warning"),
-            patch(
-                "fid_coder.plugins.universal_constructor.registry.get_registry",
-                side_effect=Exception("boom"),
-            ),
-        ):
-            _register_uc_tool_wrapper(agent, "my_tool")
-
-    def test_successful_registration(self):
-        from fid_coder.tools import _register_uc_tool_wrapper
-
-        agent = MagicMock()
-        mock_registry = MagicMock()
-        mock_tool = MagicMock()
-        mock_tool.meta.description = "desc"
-        mock_tool.docstring = "doc"
-        mock_tool.full_name = "my_tool"
-        mock_registry.get_tool.return_value = mock_tool
-
-        def sample_func(x: int) -> str:
-            return str(x)
-
-        mock_registry.get_tool_function.return_value = sample_func
-
-        with patch(
-            "fid_coder.plugins.universal_constructor.registry.get_registry",
-            return_value=mock_registry,
-        ):
-            _register_uc_tool_wrapper(agent, "my_tool")
-            agent.tool.assert_called_once()

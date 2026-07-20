@@ -38,7 +38,7 @@ class TestEffectiveSettingValue:
         not configured for most users. Add to ``OPTIONAL_KEYS`` only
         when you've confirmed the unset value is meaningful.
         """
-        OPTIONAL_KEYS = {"temperature", "fid_token"}
+        OPTIONAL_KEYS = {"temperature", "fid_token", "model", "summarization_model"}
         failures = []
         for _, setting in iter_curated_settings():
             if setting.effective_getter is None:

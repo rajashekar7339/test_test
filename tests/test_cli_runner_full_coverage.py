@@ -503,11 +503,7 @@ class TestInteractiveMode:
             _mock_renderer(),
             _interactive_patches(),
             fake_input,
-            extra_patches={
-                "fid_coder.command_line.wiggum_state.is_wiggum_active": MagicMock(
-                    return_value=False
-                ),
-            },
+            extra_patches={},
         )
 
     @pytest.mark.anyio
@@ -613,9 +609,6 @@ class TestInteractiveMode:
                 "fid_coder.cli_runner.run_prompt_with_attachments": AsyncMock(
                     return_value=(mock_result, MagicMock())
                 ),
-                "fid_coder.command_line.wiggum_state.is_wiggum_active": MagicMock(
-                    return_value=False
-                ),
             },
         )
 
@@ -662,9 +655,6 @@ class TestInteractiveMode:
                 "fid_coder.cli_runner.run_prompt_with_attachments": AsyncMock(
                     return_value=(mock_result, MagicMock())
                 ),
-                "fid_coder.command_line.wiggum_state.is_wiggum_active": MagicMock(
-                    return_value=False
-                ),
                 "fid_coder.cli_runner.parse_prompt_attachments": MagicMock(
                     return_value=_mock_parse_result("write hello")
                 ),
@@ -687,9 +677,6 @@ class TestInteractiveMode:
             extra_patches={
                 "fid_coder.cli_runner.run_prompt_with_attachments": AsyncMock(
                     return_value=(None, MagicMock())
-                ),
-                "fid_coder.command_line.wiggum_state.is_wiggum_active": MagicMock(
-                    return_value=False
                 ),
                 "fid_coder.cli_runner.parse_prompt_attachments": MagicMock(
                     return_value=_mock_parse_result("write hello")
@@ -739,9 +726,6 @@ class TestInteractiveMode:
             extra_patches={
                 "fid_coder.cli_runner.run_prompt_with_attachments": AsyncMock(
                     side_effect=RuntimeError("agent error")
-                ),
-                "fid_coder.command_line.wiggum_state.is_wiggum_active": MagicMock(
-                    return_value=False
                 ),
                 "fid_coder.cli_runner.parse_prompt_attachments": MagicMock(
                     return_value=_mock_parse_result("write hello")
@@ -1002,9 +986,6 @@ class TestInteractiveMode:
                 ),
                 "fid_coder.cli_runner.run_prompt_with_attachments": AsyncMock(
                     return_value=(mock_result, MagicMock())
-                ),
-                "fid_coder.command_line.wiggum_state.is_wiggum_active": MagicMock(
-                    return_value=False
                 ),
             },
         )
@@ -1350,9 +1331,6 @@ class TestInteractiveModeEdgeCases:
                 "fid_coder.cli_runner.parse_prompt_attachments": MagicMock(
                     return_value=_mock_parse_result("do work")
                 ),
-                "fid_coder.command_line.wiggum_state.is_wiggum_active": MagicMock(
-                    return_value=False
-                ),
             },
         )
 
@@ -1388,9 +1366,6 @@ class TestInteractiveModeEdgeCases:
                 "fid_coder.cli_runner.run_prompt_with_attachments": fake_run,
                 "fid_coder.cli_runner.parse_prompt_attachments": MagicMock(
                     return_value=_mock_parse_result("do work")
-                ),
-                "fid_coder.command_line.wiggum_state.is_wiggum_active": MagicMock(
-                    return_value=False
                 ),
             },
         )
@@ -1454,54 +1429,6 @@ class TestInteractiveModeEdgeCases:
                     "fid_coder.session_storage.restore_autosave_interactively": AsyncMock(),
                 },
             )
-
-    @pytest.mark.anyio
-    async def test_wiggum_keyboard_interrupt(self):
-        """Lines 874-876: KeyboardInterrupt in wiggum loop."""
-        call_count = 0
-
-        async def fake_input(*a, **kw):
-            nonlocal call_count
-            call_count += 1
-            return "write hello" if call_count == 1 else "/exit"
-
-        mock_result = MagicMock(output="done")
-        mock_result.all_messages.return_value = []
-        run_call = 0
-
-        async def fake_run(*a, **kw):
-            nonlocal run_call
-            run_call += 1
-            if run_call == 1:
-                return (mock_result, MagicMock())
-            raise KeyboardInterrupt
-
-        wiggum_calls = 0
-
-        def fake_wiggum():
-            nonlocal wiggum_calls
-            wiggum_calls += 1
-            return wiggum_calls == 1
-
-        await _run_interactive(
-            _mock_renderer(),
-            _interactive_patches(),
-            fake_input,
-            extra_patches={
-                "fid_coder.cli_runner.run_prompt_with_attachments": fake_run,
-                "fid_coder.cli_runner.parse_prompt_attachments": MagicMock(
-                    return_value=_mock_parse_result("write hello")
-                ),
-                "fid_coder.command_line.wiggum_state.is_wiggum_active": fake_wiggum,
-                "fid_coder.command_line.wiggum_state.get_wiggum_prompt": MagicMock(
-                    return_value="repeat"
-                ),
-                "fid_coder.command_line.wiggum_state.increment_wiggum_count": MagicMock(
-                    return_value=1
-                ),
-                "fid_coder.command_line.wiggum_state.stop_wiggum": MagicMock(),
-            },
-        )
 
 
 # ---------------------------------------------------------------------------

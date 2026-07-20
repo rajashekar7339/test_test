@@ -41,7 +41,7 @@ def test_fork_agent_completion_owns_at_slot():
     document = Document(text="/fork @qa", cursor_position=len("/fork @qa"))
 
     with patch(
-        "fid_coder.command_line.pin_command_completion.load_agent_names",
+        "fid_coder.command_line.agent_completion_helpers.load_agent_names",
         return_value=["fid-coder", "qa-kitten"],
     ):
         agents = list(
