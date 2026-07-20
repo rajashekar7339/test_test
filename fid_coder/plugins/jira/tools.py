@@ -65,8 +65,9 @@ def register_read_jira_issue(agent):
         """Fetch a Jira issue's details by key (e.g. ``PROJ-123``).
 
         Returns summary, status, type, priority, assignee, reporter, labels,
-        description, and timestamps. Requires JIRA_URL plus either
-        JIRA_PERSONAL_TOKEN or JIRA_EMAIL + JIRA_API_TOKEN to be configured.
+        description, and timestamps. Requires JIRA_URL; uses jira.cookie
+        from `~/.fid_coder/authentication.json` (auto `/jira login` if
+        missing), or JIRA_PERSONAL_TOKEN / JIRA_EMAIL+JIRA_API_TOKEN.
         """
         if not issue_key.strip():
             return JiraIssueOutput(

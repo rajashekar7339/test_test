@@ -33,7 +33,7 @@ async def fetch_issue(
     Never raises for expected HTTP failures (401/403/404/timeout).
     """
     url = f"{credentials.base_url}/rest/api/2/issue/{issue_key}"
-    headers = {"Accept": "application/json", **credentials.auth_header}
+    headers = {"Accept": "application/json", **credentials.request_headers}
 
     try:
         async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT_S) as client:
@@ -62,7 +62,8 @@ async def fetch_issue(
         return None, JiraFetchError(
             status_code=401,
             message="Jira rejected the credentials (401 Unauthorized). "
-            "Check JIRA_EMAIL/JIRA_API_TOKEN or JIRA_PERSONAL_TOKEN.",
+            "Session likely expired — re-run `/jira login` "
+            "(or check JIRA_PERSONAL_TOKEN / JIRA_EMAIL+JIRA_API_TOKEN).",
         )
     if response.status_code == 403:
         return None, JiraFetchError(

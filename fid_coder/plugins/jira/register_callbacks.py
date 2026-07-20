@@ -1,4 +1,4 @@
-"""Register the Jira plugin's tool and agent with Fid Coder core.
+"""Register the Jira plugin's tool, agent, and ``/jira`` command.
 
 No MCP involved: ``read_jira_issue`` is a native tool calling Jira's REST
 API directly (see ``client.py``), and the ``jira`` agent is the only
@@ -24,5 +24,19 @@ def _register_jira_agents() -> list[dict]:
     ]
 
 
+def _jira_command_help() -> list[tuple[str, str]]:
+    from .commands import custom_command_help
+
+    return custom_command_help()
+
+
+def _handle_jira_command(command: str, name: str):
+    from .commands import handle_custom_command
+
+    return handle_custom_command(command, name)
+
+
 register_callback("register_tools", _register_jira_tools)
 register_callback("register_agents", _register_jira_agents)
+register_callback("custom_command_help", _jira_command_help)
+register_callback("custom_command", _handle_jira_command)

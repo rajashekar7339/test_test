@@ -1,10 +1,19 @@
 """Credential resolution for the Jira plugin.
 
-Supports both Jira Cloud (email + API token, HTTP Basic) and Jira Server /
-Data Center (Personal Access Token, Bearer). Values are read from the
-environment first, then from Fid Coder's persistent config file, so users
-can either ``export JIRA_URL=...`` or ``/set JIRA_URL=...`` (which persists
-via ``set_config_value``).
+Auth sources (first match wins per key):
+1. Environment variables
+2. ``~/.fid_coder/authentication.json`` → ``jira`` section
+3. Fid Coder persistent config (``/set`` / ``get_value``)
+
+Supported auth modes:
+- Browser session cookie → ``Cookie`` header (``jira.cookie`` / ``JIRA_COOKIE``)
+- Data Center PAT → ``Authorization: Bearer`` (``JIRA_PERSONAL_TOKEN``)
+- Cloud API token → HTTP Basic (``JIRA_EMAIL`` + ``JIRA_API_TOKEN``)
+- Bare token without email → treated as Bearer
+
+When no cookie/token is present, ``get_jira_credentials`` opens a browser
+login against ``JIRA_URL`` and saves the captured cookie into
+``authentication.json``.
 """
 
 from __future__ import annotations
@@ -15,11 +24,17 @@ from typing import Optional
 
 from fid_coder.config import get_value
 
+from .auth import get_auth_value
+
 
 def _resolve(*names: str) -> Optional[str]:
-    """Return the first non-empty value for any of ``names``, env then config."""
+    """Return the first non-empty value: env → auth file → config."""
     for name in names:
         value = os.environ.get(name)
+        if value:
+            return value
+    for name in names:
+        value = get_auth_value(name)
         if value:
             return value
     for name in names:
@@ -29,18 +44,27 @@ def _resolve(*names: str) -> Optional[str]:
     return None
 
 
+def get_jira_url() -> Optional[str]:
+    """Resolved Jira base URL, or ``None``."""
+    url = _resolve("JIRA_URL")
+    return url.rstrip("/") if url else None
+
+
 @dataclass
 class JiraCredentials:
-    """Resolved Jira connection info, ready to build request auth."""
+    """Resolved Jira connection info, ready to build request headers."""
 
     base_url: str
+    cookie: Optional[str] = None
     email: Optional[str] = None
     api_token: Optional[str] = None
     personal_token: Optional[str] = None
 
     @property
-    def auth_header(self) -> dict[str, str]:
-        """Build the ``Authorization`` header for this credential set."""
+    def request_headers(self) -> dict[str, str]:
+        """Auth-related headers for Jira REST calls."""
+        if self.cookie:
+            return {"Cookie": self.cookie}
         if self.personal_token:
             return {"Authorization": f"Bearer {self.personal_token}"}
         if self.email and self.api_token:
@@ -50,8 +74,6 @@ class JiraCredentials:
             encoded = base64.b64encode(raw).decode("ascii")
             return {"Authorization": f"Basic {encoded}"}
         if self.api_token:
-            # Token present with no email: treat as a bearer/PAT-style token
-            # (covers Data Center users who set JIRA_TOKEN for a PAT).
             return {"Authorization": f"Bearer {self.api_token}"}
         return {}
 
@@ -60,37 +82,45 @@ class JiraConfigError(Exception):
     """Raised when Jira credentials are missing or incomplete."""
 
 
-def get_jira_credentials() -> JiraCredentials:
+def get_jira_credentials(*, interactive_login: bool = True) -> JiraCredentials:
     """Resolve Jira credentials, raising ``JiraConfigError`` if incomplete.
 
-    Recognized variables:
-        JIRA_URL              - base URL, e.g. https://jira.company.com
-        JIRA_EMAIL / JIRA_USERNAME - Cloud basic-auth user
-        JIRA_API_TOKEN / JIRA_TOKEN - Cloud API token (or a bare token)
-        JIRA_PERSONAL_TOKEN    - explicit Data Center PAT (Bearer)
+    When ``interactive_login`` is True and no cookie/token is available,
+    launches a headed browser against ``JIRA_URL`` so the user can SSO
+    login; the session cookie is saved to ``authentication.json``.
     """
-    base_url = _resolve("JIRA_URL")
+    base_url = get_jira_url()
     if not base_url:
         raise JiraConfigError(
-            "JIRA_URL is not set. Set it to your Jira base URL, e.g. "
-            "https://jira.<company>.com (via `export JIRA_URL=...` or "
-            "`/set JIRA_URL=...`)."
+            "JIRA_URL is not set. Run `/jira login https://jira.<company>.com` "
+            "or `/jira set url https://jira.<company>.com` "
+            "(saved under jira.url in ~/.fid_coder/authentication.json)."
         )
 
+    cookie = _resolve("JIRA_COOKIE")
     email = _resolve("JIRA_EMAIL", "JIRA_USERNAME")
     api_token = _resolve("JIRA_API_TOKEN", "JIRA_TOKEN")
     personal_token = _resolve("JIRA_PERSONAL_TOKEN")
 
-    if not (personal_token or api_token):
-        raise JiraConfigError(
-            "No Jira credentials found. Set either JIRA_PERSONAL_TOKEN "
-            "(Data Center Personal Access Token) or JIRA_EMAIL + "
-            "JIRA_API_TOKEN (Cloud API token from "
-            "https://id.atlassian.com/manage-profile/security/api-tokens)."
-        )
+    if not (cookie or personal_token or api_token):
+        if not interactive_login:
+            raise JiraConfigError(
+                "No Jira credentials in ~/.fid_coder/authentication.json. "
+                "Run `/jira login` to capture a browser session cookie."
+            )
+        try:
+            from .login import ensure_jira_cookie
+
+            cookie = ensure_jira_cookie(base_url=base_url)
+        except Exception as e:
+            raise JiraConfigError(
+                f"Could not obtain Jira session cookie: {e}. "
+                "Or set JIRA_PERSONAL_TOKEN / JIRA_EMAIL+JIRA_API_TOKEN."
+            ) from e
 
     return JiraCredentials(
-        base_url=base_url.rstrip("/"),
+        base_url=base_url,
+        cookie=cookie,
         email=email,
         api_token=api_token,
         personal_token=personal_token,
