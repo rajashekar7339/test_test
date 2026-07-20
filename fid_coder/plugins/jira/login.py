@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import concurrent.futures
 import logging
 from typing import Optional
 from urllib.parse import urlparse
@@ -46,12 +47,18 @@ def _looks_logged_in(cookies: list[dict]) -> bool:
     return any(hint in names for hint in _SESSION_COOKIE_HINTS)
 
 
-def capture_jira_cookie_via_browser(base_url: str) -> str:
-    """Open headed Chromium on ``base_url``, wait for login, return Cookie header.
+def _running_in_asyncio_loop() -> bool:
+    try:
+        import asyncio
 
-    Blocks until the user presses Enter in the terminal after finishing SSO
-    login in the browser window. Raises ``RuntimeError`` on failure.
-    """
+        asyncio.get_running_loop()
+        return True
+    except RuntimeError:
+        return False
+
+
+def _capture_jira_cookie_sync(base_url: str) -> str:
+    """Playwright Sync API body — must not run on the main asyncio loop thread."""
     from playwright.sync_api import sync_playwright
 
     from fid_coder.messaging import emit_info, emit_success, emit_warning
@@ -83,7 +90,6 @@ def capture_jira_cookie_via_browser(base_url: str) -> str:
             raise RuntimeError("Jira login cancelled.") from e
 
         cookies = context.cookies()
-        # Prefer cookies for the Jira host; fall back to all if filter is empty.
         host = parsed.hostname or ""
         host_cookies = [
             c for c in cookies if host and host in str(c.get("domain", "")).lstrip(".")
@@ -107,6 +113,19 @@ def capture_jira_cookie_via_browser(base_url: str) -> str:
         emit_success("Captured Jira session cookies.")
 
     return header
+
+
+def capture_jira_cookie_via_browser(base_url: str) -> str:
+    """Open headed Chromium on ``base_url``, wait for login, return Cookie header.
+
+    Fid's TUI runs inside an asyncio loop; Playwright's Sync API refuses to
+    start there, so we hop to a worker thread (same pattern as ``/btw`` and
+    theme pickers) when a loop is already running.
+    """
+    if _running_in_asyncio_loop():
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            return executor.submit(_capture_jira_cookie_sync, base_url).result()
+    return _capture_jira_cookie_sync(base_url)
 
 
 def ensure_jira_cookie(*, base_url: Optional[str] = None, force: bool = False) -> str:
