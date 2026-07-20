@@ -36,7 +36,10 @@ async def fetch_issue(
     headers = {"Accept": "application/json", **credentials.request_headers}
 
     try:
-        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT_S) as client:
+        # follow_redirects: corporate Jira often stores http:// and 301s to https://
+        async with httpx.AsyncClient(
+            timeout=REQUEST_TIMEOUT_S, follow_redirects=True
+        ) as client:
             response = await client.get(url, headers=headers)
     except httpx.TimeoutException:
         return None, JiraFetchError(
@@ -75,6 +78,19 @@ async def fetch_issue(
         return None, JiraFetchError(
             status_code=404,
             message=f"Issue '{issue_key}' was not found (404). Check the key and base URL.",
+        )
+
+    # Surface redirect loops / leftover 3xx if follow_redirects somehow didn't settle.
+    if 300 <= response.status_code < 400:
+        location = response.headers.get("location", "")
+        return None, JiraFetchError(
+            status_code=response.status_code,
+            message=(
+                f"Jira returned HTTP {response.status_code} after redirects"
+                + (f" (Location: {location})" if location else "")
+                + ". Prefer https:// in jira.url — try `/jira set url https://…` "
+                "or `/jira login https://jira.<company>.com`."
+            ),
         )
 
     return None, JiraFetchError(

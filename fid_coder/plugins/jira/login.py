@@ -8,6 +8,7 @@ from typing import Optional
 from urllib.parse import urlparse
 
 from .auth import JIRA_SECTION, get_section, save_section
+from .config import get_jira_url, normalize_jira_url
 
 logger = logging.getLogger(__name__)
 
@@ -24,11 +25,10 @@ _SESSION_COOKIE_HINTS = (
 def resolve_jira_url(explicit: Optional[str] = None) -> Optional[str]:
     """Return a Jira base URL from arg, auth file, env, or config."""
     if explicit and explicit.strip():
-        return explicit.strip().rstrip("/")
+        return normalize_jira_url(explicit)
 
-    from .config import get_jira_url
-
-    return get_jira_url()
+    url = get_jira_url()
+    return normalize_jira_url(url) if url else None
 
 
 def _cookies_to_header(cookies: list[dict]) -> str:
@@ -57,8 +57,11 @@ def _running_in_asyncio_loop() -> bool:
         return False
 
 
-def _capture_jira_cookie_sync(base_url: str) -> str:
-    """Playwright Sync API body — must not run on the main asyncio loop thread."""
+def _capture_jira_cookie_sync(base_url: str) -> tuple[str, str]:
+    """Playwright Sync API body — must not run on the main asyncio loop thread.
+
+    Returns ``(cookie_header, final_origin)``.
+    """
     from playwright.sync_api import sync_playwright
 
     from fid_coder.messaging import emit_info, emit_success, emit_warning
@@ -89,13 +92,21 @@ def _capture_jira_cookie_sync(base_url: str) -> str:
             browser.close()
             raise RuntimeError("Jira login cancelled.") from e
 
+        # Prefer the origin we actually landed on (often https after SSO redirect).
+        final_url = page.url or base_url
+        final_parsed = urlparse(final_url)
+        host = final_parsed.hostname or parsed.hostname or ""
         cookies = context.cookies()
-        host = parsed.hostname or ""
         host_cookies = [
             c for c in cookies if host and host in str(c.get("domain", "")).lstrip(".")
         ] or list(cookies)
 
         browser.close()
+
+    if final_parsed.scheme and final_parsed.netloc:
+        origin = normalize_jira_url(f"{final_parsed.scheme}://{final_parsed.netloc}")
+    else:
+        origin = normalize_jira_url(base_url)
 
     header = _cookies_to_header(host_cookies)
     if not header:
@@ -112,11 +123,13 @@ def _capture_jira_cookie_sync(base_url: str) -> str:
     else:
         emit_success("Captured Jira session cookies.")
 
-    return header
+    return header, origin
 
 
-def capture_jira_cookie_via_browser(base_url: str) -> str:
-    """Open headed Chromium on ``base_url``, wait for login, return Cookie header.
+def capture_jira_cookie_via_browser(base_url: str) -> tuple[str, str]:
+    """Open headed Chromium on ``base_url``, wait for login.
+
+    Returns ``(cookie_header, final_origin)``.
 
     Fid's TUI runs inside an asyncio loop; Playwright's Sync API refuses to
     start there, so we hop to a worker thread (same pattern as ``/btw`` and
@@ -139,13 +152,15 @@ def ensure_jira_cookie(*, base_url: Optional[str] = None, force: bool = False) -
     if existing and not force:
         return existing
 
-    url = resolve_jira_url(base_url) or section.get("url")
+    url = resolve_jira_url(base_url) or (
+        normalize_jira_url(section["url"]) if section.get("url") else None
+    )
     if not url:
         raise RuntimeError(
             "JIRA_URL is not set. Run `/jira set url https://jira.<company>.com` "
             "or `/jira login https://jira.<company>.com`."
         )
 
-    cookie = capture_jira_cookie_via_browser(url)
-    save_section(JIRA_SECTION, {"url": url, "cookie": cookie})
+    cookie, origin = capture_jira_cookie_via_browser(url)
+    save_section(JIRA_SECTION, {"url": origin, "cookie": cookie})
     return cookie

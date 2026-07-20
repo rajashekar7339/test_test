@@ -21,6 +21,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from typing import Optional
+from urllib.parse import urlparse
 
 from fid_coder.config import get_value
 
@@ -44,10 +45,27 @@ def _resolve(*names: str) -> Optional[str]:
     return None
 
 
+def normalize_jira_url(url: str) -> str:
+    """Strip trailing slash; upgrade bare ``http://`` Jira hosts to ``https://``.
+
+    Many corporate instances permanently redirect http→https (HTTP 301). Using
+    https up front avoids redirect / cookie edge cases on the REST client.
+    """
+    cleaned = url.strip().rstrip("/")
+    parsed = urlparse(cleaned)
+    if parsed.scheme == "http" and parsed.netloc:
+        cleaned = cleaned.replace("http://", "https://", 1)
+    return cleaned
+
+
 def get_jira_url() -> Optional[str]:
-    """Resolved Jira base URL, or ``None``."""
+    """Resolved Jira base URL, or ``None``.
+
+    Upgrades ``http://`` → ``https://`` so stored corporate URLs that 301
+    redirect do not break REST calls.
+    """
     url = _resolve("JIRA_URL")
-    return url.rstrip("/") if url else None
+    return normalize_jira_url(url) if url else None
 
 
 @dataclass

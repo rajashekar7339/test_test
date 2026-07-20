@@ -108,7 +108,9 @@ def _handle_set(args: list[str]) -> bool:
         return True
 
     if what == "url":
-        path = save_auth_file({"JIRA_URL": value})
+        from .config import normalize_jira_url
+
+        path = save_auth_file({"JIRA_URL": normalize_jira_url(value)})
         emit_success(f"Saved jira.url to {path}")
         return True
     if what == "cookie":
