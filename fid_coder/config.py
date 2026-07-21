@@ -1842,29 +1842,29 @@ def set_diff_deletion_color(color: str):
 #   - Greens: Completions & success
 #   - Neutrals: Search & listings
 DEFAULT_BANNER_COLORS = {
-    "thinking": "deep_sky_blue4",  # Sapphire - contemplation
-    "agent_response": "medium_purple4",  # Amethyst - main AI output
-    "shell_command": "dark_orange3",  # Amber - system commands
-    "read_file": "steel_blue",  # Steel - reading files
-    "edit_file": "dark_goldenrod",  # Gold - modifications (legacy)
-    "create_file": "dark_goldenrod",  # Gold - file creation
-    "replace_in_file": "dark_goldenrod",  # Gold - file modifications
-    "delete_snippet": "dark_goldenrod",  # Gold - snippet removal
-    "grep": "grey37",  # Silver - search results
-    "directory_listing": "dodger_blue2",  # Sky - navigation
-    "agent_reasoning": "dark_violet",  # Violet - deep thought
-    "invoke_agent": "deep_pink4",  # Ruby - agent invocation
-    "subagent_response": "sea_green3",  # Emerald - sub-agent success
-    "list_agents": "dark_slate_gray3",  # Slate - neutral listing
-    "universal_constructor": "dark_cyan",  # Teal - constructing tools
+    "thinking": "slate_blue3",  # Indigo - contemplation
+    "agent_response": "orchid",  # Orchid - main AI output
+    "shell_command": "khaki3",  # Amber - system commands
+    "read_file": "cadet_blue",  # Cadet - reading files
+    "edit_file": "light_goldenrod3",  # Gold - modifications (legacy)
+    "create_file": "light_goldenrod3",  # Gold - file creation
+    "replace_in_file": "light_goldenrod3",  # Gold - file modifications
+    "delete_snippet": "light_goldenrod3",  # Gold - snippet removal
+    "grep": "grey42",  # Silver - search results
+    "directory_listing": "sky_blue3",  # Sky - navigation
+    "agent_reasoning": "medium_orchid",  # Orchid - deep thought
+    "invoke_agent": "hot_pink3",  # Rose - agent invocation
+    "subagent_response": "spring_green3",  # Jade - sub-agent success
+    "list_agents": "light_slate_grey",  # Slate - neutral listing
+    "universal_constructor": "turquoise4",  # Turquoise - constructing tools
     # Browser/Terminal tools - same color as edit_file (gold)
-    "terminal_tool": "dark_goldenrod",  # Gold - browser terminal operations
+    "terminal_tool": "light_goldenrod3",  # Gold - browser terminal operations
     # MCP tools - distinct from builtin tools
-    "mcp_tool_call": "dark_cyan",  # Teal - external MCP tool calls
+    "mcp_tool_call": "turquoise4",  # Turquoise - external MCP tool calls
     # User-initiated shell pass-through (! prefix) - distinct from agent's shell_command
-    "shell_passthrough": "medium_sea_green",  # Green - user's own shell commands
+    "shell_passthrough": "pale_green3",  # Green - user's own shell commands
     # LLM Judge - goal-mode verdict (distinct from agent reasoning)
-    "llm_judge": "gold3",  # Gold - judicial authority / gavel
+    "llm_judge": "orange3",  # Amber - judicial authority / gavel
 }
 
 

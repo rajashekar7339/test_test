@@ -478,7 +478,7 @@ async def test_get_input_with_combined_completion_defaults(
     # Check default prompt string was converted to FormattedText
     assert isinstance(mock_session_instance.prompt_async.call_args[0][0], FormattedText)
     assert mock_session_instance.prompt_async.call_args[0][0] == FormattedText(
-        [("", ">>> ")]
+        [("", "\u276f ")]
     )
     assert "style" in mock_session_instance.prompt_async.call_args[1]
 
@@ -551,7 +551,7 @@ def test_meaningful_prompt_fragments_include_semantic_roles():
     assert "class:cwd class:tui.muted" in styles
     assert "class:arrow class:tui.help-key" in styles
     assert rendered.startswith("Biscuit [Fid Coder] [test-model] ")
-    assert rendered.endswith(">>> ")
+    assert rendered.endswith("\u276f ")
 
 
 @pytest.mark.asyncio

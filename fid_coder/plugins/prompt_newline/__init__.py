@@ -2,11 +2,11 @@
 
 When enabled, transforms
 
-    🐶 fid [agent] [model] (~/very/long/cwd) >>> typed text
+    fid [agent] [model] (~/very/long/cwd) ❯ typed text
 
 into
 
-    🐶 fid [agent] [model] (~/very/long/cwd) >>>
+    fid [agent] [model] (~/very/long/cwd) ❯
     typed text
 
 Toggle at runtime with ``/prompt_newline [on|off]``. Persisted in fid.cfg.

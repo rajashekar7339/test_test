@@ -40,7 +40,7 @@ def test_interactive_smoke() -> None:
             [
                 "What should we name the fid?",
                 "Enter your coding task",
-                ">>> ",
+                "\u276f ",
                 pexpect.TIMEOUT,
             ],
             timeout=15,
@@ -51,7 +51,7 @@ def test_interactive_smoke() -> None:
             child.expect("What's your name", timeout=15)
             child.sendline("HarnessTester\r")
             # Now wait for the coding task prompt
-            child.expect(["Enter your coding task", ">>> "], timeout=30)
+            child.expect(["Enter your coding task", "\u276f "], timeout=30)
             print("[SMOKE] Completed first-run setup")
         elif idx == 1 or idx == 2:  # Found prompt
             print("[SMOKE] Found prompt indicator")

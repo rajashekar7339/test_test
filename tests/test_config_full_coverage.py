@@ -852,7 +852,7 @@ class TestBannerColors:
     def test_get_default(self):
         cp_config.reset_value("banner_color_thinking")
         color = cp_config.get_banner_color("thinking")
-        assert color == "deep_sky_blue4"
+        assert color == "slate_blue3"
 
     def test_get_unknown_banner(self):
         assert cp_config.get_banner_color("nonexistent_banner") == "blue"

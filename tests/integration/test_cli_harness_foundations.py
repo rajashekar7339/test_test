@@ -50,7 +50,7 @@ def test_spawned_cli_is_alive(spawned_cli: SpawnResult) -> None:
     log = spawned_cli.read_log()
     # The persistent-prompt UI may render the prompt row without emitting the
     # classic banner text, so accept any pattern that wait_for_ready matches.
-    ready_patterns = ["Enter your coding task", ">>> ", "Interactive Mode"]
+    ready_patterns = ["Enter your coding task", "\u276f ", "Interactive Mode"]
     assert log == "" or any(p in log for p in ready_patterns)
 
 

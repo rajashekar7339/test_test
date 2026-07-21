@@ -393,7 +393,7 @@ def emit_prompt(prompt_text: str, timeout: float = None) -> str:
 
     # safe_input drains the message queue before reading, so the prompt_text
     # above is guaranteed to have hit the screen first.
-    response = safe_input(">>> ")
+    response = safe_input("\u276f ")
     return response
 
 

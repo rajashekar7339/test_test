@@ -618,7 +618,7 @@ class TestRegisterCallbacks:
         ):
             assert _termflow_style(default) is default
 
-    def test_first_run_applies_tokyo_night(self):
+    def test_first_run_applies_purple_fid(self):
         from fid_coder.plugins.theme.register_callbacks import (
             _apply_default_theme_on_first_run,
         )
@@ -639,15 +639,15 @@ class TestRegisterCallbacks:
             mock_osc.get_saved_palette.return_value = None
             _apply_default_theme_on_first_run()
 
-        mock_apply.assert_called_once_with(colors_for("tokyo-night"))
+        mock_apply.assert_called_once_with(colors_for("purple-fid"))
         mock_cs.apply_content_styles.assert_called_once_with(
-            content_styles_for("tokyo-night")
+            content_styles_for("purple-fid")
         )
-        mock_rt.apply_remap.assert_called_once_with(color_remap_for("tokyo-night"))
+        mock_rt.apply_remap.assert_called_once_with(color_remap_for("purple-fid"))
         mock_osc.apply_palette.assert_called_once_with(
-            terminal_palette_for("tokyo-night")
+            terminal_palette_for("purple-fid")
         )
-        mock_set.assert_called_once_with("theme_active_theme", "tokyo-night")
+        mock_set.assert_called_once_with("theme_active_theme", "purple-fid")
 
     def test_default_theme_preserves_saved_choice(self):
         from fid_coder.plugins.theme.register_callbacks import (

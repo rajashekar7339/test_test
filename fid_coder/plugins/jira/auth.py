@@ -74,7 +74,10 @@ def _write_raw(data: dict[str, Any]) -> str:
     path = get_auth_file_path()
     os.makedirs(CONFIG_DIR, exist_ok=True)
     tmp_path = f"{path}.tmp"
-    with open(tmp_path, "w", encoding="utf-8") as f:
+    # Create the temp file 0o600 from the start so credentials are never
+    # world-readable, even briefly.
+    fd = os.open(tmp_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, AUTH_FILE_MODE)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, sort_keys=True)
         f.write("\n")
     os.replace(tmp_path, path)
@@ -134,14 +137,3 @@ def get_auth_value(name: str) -> Optional[str]:
         return None
     section_key = _flat_key_to_section_key(name)
     return get_section(JIRA_SECTION).get(section_key)
-
-
-def save_auth_file(
-    updates: dict[str, str], *, clear: Optional[list[str]] = None
-) -> str:
-    """Map flat ``JIRA_*`` keys into the jira section and persist."""
-    section_updates: dict[str, str] = {}
-    for key, value in updates.items():
-        section_updates[_flat_key_to_section_key(key)] = value
-    section_clear = [_flat_key_to_section_key(k) for k in (clear or [])]
-    return save_section(JIRA_SECTION, section_updates, clear=section_clear or None)

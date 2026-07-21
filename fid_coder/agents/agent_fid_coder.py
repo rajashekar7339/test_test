@@ -14,7 +14,7 @@ class FidCoderAgent(BaseAgent):
 
     @property
     def display_name(self) -> str:
-        return "Fid-Coder"
+        return "Fid"
 
     @property
     def description(self) -> str:

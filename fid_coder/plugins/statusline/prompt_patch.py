@@ -15,7 +15,7 @@ Three modes (config ``statusline_mode``):
   line, so the user types below the status line::
 
        [model] fid-coder (main) 0.9%ctx
-      >>> typed text
+      ❯ typed text
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ from .runner import get_status_text
 logger = logging.getLogger(__name__)
 
 _PATCH_ATTR = "_statusline_original_prompt_fn"
-_DEFAULT_ARROW = ">>> "
+_DEFAULT_ARROW = "\u276f "
 
 
 def _render(formatted_text, base: str):
@@ -70,7 +70,7 @@ def install_prompt_patch() -> None:
     original = ptc.get_prompt_with_active_model
     setattr(ptc, _PATCH_ATTR, original)
 
-    def patched(base: str = ">>> "):
+    def patched(base: str = "\u276f "):
         return _render(original(base), base)
 
     ptc.get_prompt_with_active_model = patched

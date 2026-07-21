@@ -3,14 +3,12 @@
 from __future__ import annotations
 
 import concurrent.futures
-import logging
+import time
 from typing import Optional
 from urllib.parse import urlparse
 
 from .auth import JIRA_SECTION, get_section, save_section
 from .config import get_jira_url, normalize_jira_url
-
-logger = logging.getLogger(__name__)
 
 # Cookie names that indicate a logged-in Jira session (Server/DC + Cloud-ish).
 _SESSION_COOKIE_HINTS = (
@@ -20,6 +18,10 @@ _SESSION_COOKIE_HINTS = (
     "cloud.session.token",
     "atlassian.account.session",
 )
+
+# How long to wait for SSO before giving up (user stays in the browser).
+_LOGIN_WAIT_TIMEOUT_S = 5 * 60
+_LOGIN_POLL_INTERVAL_S = 1.0
 
 
 def resolve_jira_url(explicit: Optional[str] = None) -> Optional[str]:
@@ -47,6 +49,36 @@ def _looks_logged_in(cookies: list[dict]) -> bool:
     return any(hint in names for hint in _SESSION_COOKIE_HINTS)
 
 
+def _domain_matches(host: str, domain: str) -> bool:
+    """Standard cookie scoping: exact host, or ``host`` under ``domain``."""
+    domain = domain.lstrip(".")
+    return host == domain or host.endswith(f".{domain}")
+
+
+def _cookies_for_host(cookies: list[dict], host: str) -> list[dict]:
+    """Prefer cookies scoped to ``host``; fall back to the full jar."""
+    if not host:
+        return list(cookies)
+    host_cookies = [
+        c for c in cookies if _domain_matches(host, str(c.get("domain", "")))
+    ]
+    return host_cookies or list(cookies)
+
+
+def _wait_for_session_cookie(context) -> None:
+    """Poll the browser cookie jar until a Jira session cookie appears.
+
+    Accepts a session cookie anywhere in the jar (SSO may set it on a
+    different domain than base_url). Returns on timeout too — the caller
+    re-reads the jar and reports a clear error if login never completed.
+    """
+    deadline = time.monotonic() + _LOGIN_WAIT_TIMEOUT_S
+    while time.monotonic() < deadline:
+        if _looks_logged_in(context.cookies()):
+            return
+        time.sleep(_LOGIN_POLL_INTERVAL_S)
+
+
 def _running_in_asyncio_loop() -> bool:
     try:
         import asyncio
@@ -72,36 +104,32 @@ def _capture_jira_cookie_sync(base_url: str) -> tuple[str, str]:
             f"Invalid JIRA_URL '{base_url}'. Expected https://jira.<company>.com"
         )
 
-    emit_info(f"Opening browser for Jira login: {base_url}")
-    emit_info("Log in with SSO if prompted, then return here and press Enter.")
+    emit_info(
+        "Log in with SSO in the browser window — cookies are captured "
+        "automatically when the session is ready (no Enter needed)."
+    )
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False)
-        context = browser.new_context()
-        page = context.new_page()
         try:
-            page.goto(base_url, wait_until="domcontentloaded", timeout=60_000)
-        except Exception as e:
-            emit_warning(f"Initial navigation warning (you can still log in): {e}")
+            context = browser.new_context()
+            page = context.new_page()
+            try:
+                page.goto(base_url, wait_until="domcontentloaded", timeout=60_000)
+            except Exception as e:
+                emit_warning(f"Initial navigation warning (you can still log in): {e}")
 
-        try:
-            from fid_coder.command_line.utils import safe_input
+            # Wait until SSO finishes and a session cookie shows up — no
+            # manual Enter needed.
+            _wait_for_session_cookie(context)
 
-            safe_input("Press Enter after you have logged into Jira… ")
-        except (EOFError, KeyboardInterrupt) as e:
+            # Prefer the origin we actually landed on (often https after SSO
+            # redirect) and scope cookies to that host.
+            final_parsed = urlparse(page.url or base_url)
+            host = final_parsed.hostname or parsed.hostname or ""
+            host_cookies = _cookies_for_host(context.cookies(), host)
+        finally:
             browser.close()
-            raise RuntimeError("Jira login cancelled.") from e
-
-        # Prefer the origin we actually landed on (often https after SSO redirect).
-        final_url = page.url or base_url
-        final_parsed = urlparse(final_url)
-        host = final_parsed.hostname or parsed.hostname or ""
-        cookies = context.cookies()
-        host_cookies = [
-            c for c in cookies if host and host in str(c.get("domain", "")).lstrip(".")
-        ] or list(cookies)
-
-        browser.close()
 
     if final_parsed.scheme and final_parsed.netloc:
         origin = normalize_jira_url(f"{final_parsed.scheme}://{final_parsed.netloc}")
@@ -111,18 +139,18 @@ def _capture_jira_cookie_sync(base_url: str) -> tuple[str, str]:
     header = _cookies_to_header(host_cookies)
     if not header:
         raise RuntimeError(
-            "No cookies captured. Make sure you finished login in the browser "
-            "window before pressing Enter."
+            "No cookies captured. Finish SSO login in the browser window "
+            f"within {_LOGIN_WAIT_TIMEOUT_S // 60} minutes."
         )
 
     if not _looks_logged_in(host_cookies):
-        emit_warning(
-            "No obvious Jira session cookie (JSESSIONID / cloud.session.token) "
-            "found — saving captured cookies anyway."
+        raise RuntimeError(
+            "Timed out waiting for a Jira session cookie "
+            "(JSESSIONID / cloud.session.token). Finish SSO login in the "
+            "browser and try again."
         )
-    else:
-        emit_success("Captured Jira session cookies.")
 
+    emit_success("Captured Jira session cookies.")
     return header, origin
 
 
@@ -157,8 +185,7 @@ def ensure_jira_cookie(*, base_url: Optional[str] = None, force: bool = False) -
     )
     if not url:
         raise RuntimeError(
-            "JIRA_URL is not set. Run `/jira set url https://jira.<company>.com` "
-            "or `/jira login https://jira.<company>.com`."
+            "JIRA_URL is not set. Run `/jira login https://jira.<company>.com`."
         )
 
     cookie, origin = capture_jira_cookie_via_browser(url)

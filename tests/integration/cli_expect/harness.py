@@ -361,7 +361,7 @@ class CliHarness:
         """Wait for CLI to be ready for user input."""
         self._expect_with_retry(
             result.child,
-            ["Enter your coding task", ">>> ", "Interactive Mode"],
+            ["Enter your coding task", "\u276f ", "Interactive Mode"],
             timeout=result.timeout,
         )
 

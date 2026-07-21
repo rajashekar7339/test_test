@@ -558,15 +558,15 @@ def _normalize_emoji_spacing(text: str) -> str:
 # palette. The ansi names emit real ANSI codes, so the /theme plugin's OSC
 # palette remap (Level 3) restyles the prompt to the chosen theme.
 PROMPT_STYLES = {
-    "fid": "bold ansimagenta",
-    "agent": "bold ansiblue",
+    "fid": "bold ansiyellow",
+    "agent": "bold ansimagenta",
     "model": "bold ansicyan",
-    "cwd": "bold ansigreen",
-    "arrow": "bold ansiyellow",
+    "cwd": "bold ansibrightblack",
+    "arrow": "bold ansibrightwhite",
 }
 
 
-def get_prompt_with_active_model(base: str = ">>> "):
+def get_prompt_with_active_model(base: str = "\u276f "):
     from fid_coder.agents.agent_manager import get_current_agent
 
     fid = get_fid_name()
@@ -727,7 +727,7 @@ def build_completer_stack():
 
 
 async def get_input_with_combined_completion(
-    prompt_str=">>> ", history_file: Optional[str] = None
+    prompt_str="\u276f ", history_file: Optional[str] = None
 ) -> str:
     # Use SafeFileHistory to handle encoding errors gracefully on Windows
     history = SafeFileHistory(history_file) if history_file else None

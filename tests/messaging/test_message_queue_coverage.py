@@ -557,7 +557,7 @@ class TestEmitPrompt:
             result = emit_prompt("Enter something:")
 
             assert result == "user input"
-            mock_input.assert_called_once_with(">>> ")
+            mock_input.assert_called_once_with("\u276f ")
 
 
 class TestProcessMessagesEdgeCases:

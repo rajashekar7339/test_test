@@ -44,7 +44,7 @@ $dir    = if ($data.workspace.current_dir)         { $data.workspace.current_dir
 $branch = if ($data.workspace.git_branch)          { " ($($data.workspace.git_branch))" }  else { "" }
 $pct    = if ($null -ne $data.context_window.used_percentage) { $data.context_window.used_percentage } else { 0 }
 $base   = if ($dir) { Split-Path $dir -Leaf } else { "" }
-Write-Output "🐶 $fid [$model] $base$branch ${pct}%ctx" # stdout, captured by parent process
+Write-Output "◆ $fid [$model] $base$branch ${pct}%ctx" # stdout, captured by parent process
 """
 
 _STARTER_SCRIPT = """\
@@ -63,7 +63,7 @@ ind=$(printf '%s' "$input" | jq -r '.context_window.indicator // ""')
 pct=$(printf '%s' "$input" | jq -r '.context_window.used_percentage // 0')
 tps=$(printf '%s' "$input" | jq -r '.tokens_per_second // 0')
 
-line="\\033[1m🐶 $fid\\033[0m"
+line="\\033[1m◆ $fid\\033[0m"
 [ -n "$ind" ] && line="$line $ind"
 line="$line \\033[36m[$model]\\033[0m \\033[2m$(basename "$dir")\\033[0m"
 [ -n "$branch" ] && line="$line \\033[35m($branch)\\033[0m"

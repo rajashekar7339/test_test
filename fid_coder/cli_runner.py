@@ -246,28 +246,31 @@ async def main():
         try:
             import pyfiglet
 
-            intro_lines = pyfiglet.figlet_format("FID CODER", font="ansi_shadow").split(
-                "\n"
-            )
+            from rich.markup import escape as rich_escape
 
-            # Simple blue to green gradient (top to bottom)
-            gradient_colors = ["bright_blue", "bright_cyan", "bright_green"]
+            intro_lines = pyfiglet.figlet_format("FID CODER", font="slant").split("\n")
+
+            # Fid palette gradient (top to bottom): magenta to white to cyan
+            gradient_colors = ["bright_magenta", "bright_white", "bright_cyan"]
             display_console.print("\n")
 
             lines = []
             # Apply gradient line by line
             for line_num, line in enumerate(intro_lines):
                 if line.strip():
-                    # Use line position to determine color (top blue, middle cyan, bottom green)
+                    # Use line position to determine color (top magenta, middle white, bottom cyan)
                     color_idx = min(line_num // 2, len(gradient_colors) - 1)
                     color = gradient_colors[color_idx]
-                    lines.append(f"[{color}]{line}[/{color}]")
+                    # slant glyphs end in literal backslashes, which would
+                    # otherwise escape the immediately-following "[" and
+                    # print our closing color tag as literal text.
+                    lines.append(f"[{color}]{rich_escape(line)}[/{color}]")
                 else:
                     lines.append("")
             # Print directly to console to avoid the 'dim' style from emit_system_message
             display_console.print("\n".join(lines))
         except ImportError:
-            emit_system_message("🐶 Fid Coder is Loading...")
+            emit_system_message("Fid Coder is Loading...")
 
         # Truecolor warning moved to interactive_mode() so it prints LAST
         # after all the help stuff - max visibility for the ugly red box!
@@ -590,7 +593,7 @@ def _persistent_prompt_parts() -> tuple:
         formatted = get_prompt_with_active_model()
         return flatten_prompt_fragments(formatted, PROMPT_STYLES)
     except Exception:
-        return ">>> ", []
+        return "\u276f ", []
 
 
 def _prompt_echo_text(task: str):
@@ -672,40 +675,20 @@ async def interactive_mode(message_renderer, initial_command: str = None) -> Non
     display_console = message_renderer.console
     from fid_coder.messaging import emit_info, emit_system_message
 
-    emit_system_message(
-        "Type '/exit', '/quit', or press Ctrl+D to exit the interactive mode."
-    )
-    emit_system_message("Type 'clear' to reset the conversation history.")
-    emit_system_message("Type /help to view all commands")
-    emit_system_message(
-        "Type @ for path completion, or /model to pick a model. Toggle multiline with Alt+M or F2; newline: Shift+Enter."
-    )
-    emit_system_message("Paste images: Ctrl+V (even on Mac!), F3, or /paste command.")
-    import platform
-
-    if platform.system() == "Darwin":
-        emit_system_message(
-            "💡 macOS tip: Use Ctrl+V (not Cmd+V) to paste images in terminal."
-        )
     cancel_key = get_cancel_agent_display_name()
     emit_system_message(
-        f"Press {cancel_key} during processing to cancel the current task or inference."
+        "/exit or Ctrl+D to quit · 'clear' resets history · /help for all commands"
     )
     emit_system_message(
-        "Use Ctrl+X Ctrl+E to open $EDITOR (Notepad on Windows); "
-        "Ctrl+X Ctrl+B to background running shell commands; "
+        "@ for path completion · /model to switch models · Ctrl+V to paste images · "
+        "Alt+M or F2 toggles multiline; newline: Shift+Enter"
+    )
+    emit_system_message(
+        f"{cancel_key} cancels a running task. Use Ctrl+X Ctrl+E to open $EDITOR "
+        "(Notepad on Windows); Ctrl+X Ctrl+B to background running shell commands; "
         "Ctrl+X Ctrl+X to kill running shell commands."
     )
-    emit_system_message(
-        "Use /autosave_load to manually load a previous autosave session."
-    )
-    emit_system_message(
-        "Use /diff to configure diff highlighting colors for file changes."
-    )
-    emit_system_message("To re-run the tutorial, use /tutorial.")
-    emit_system_message(
-        "!<command> to run shell commands directly (e.g., !git status)",
-    )
+    emit_system_message("!<command> runs shell directly · /tutorial replays onboarding")
     # Print truecolor warning LAST so it's the most visible thing on startup
     # Big ugly red box should be impossible to miss! 🔴
     print_truecolor_warning(display_console)
@@ -763,7 +746,7 @@ async def interactive_mode(message_renderer, initial_command: str = None) -> Non
                 )
                 get_message_bus().emit(response_msg)
 
-                emit_success("🐶 Continuing in Interactive Mode")
+                emit_success("◆ Continuing in Interactive Mode")
                 emit_system_message(
                     "Your command and response are preserved in the conversation history."
                 )
@@ -911,7 +894,7 @@ async def interactive_mode(message_renderer, initial_command: str = None) -> Non
                         pass
                 except ImportError:
                     # Fall back to basic input if prompt_toolkit is not available
-                    task = input(">>> ")
+                    task = input("\u276f ")
 
         except (KeyboardInterrupt, asyncio.CancelledError):
             # Handle Ctrl+C - cancel input and continue

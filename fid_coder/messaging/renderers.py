@@ -543,7 +543,7 @@ class SynchronousInteractiveRenderer:
             self.console.file.flush()
 
         try:
-            response = input(">>> ")
+            response = input("\u276f ")
             from .message_queue import provide_prompt_response
 
             provide_prompt_response(prompt_id, response)

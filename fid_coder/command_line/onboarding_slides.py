@@ -44,7 +44,7 @@ def get_gradient_banner() -> SlideContent:
     try:
         import pyfiglet
 
-        banner = pyfiglet.figlet_format("FID CODER", font="ansi_shadow").rstrip()
+        banner = pyfiglet.figlet_format("FID CODER", font="slant").rstrip()
     except ImportError:
         banner = "═══ FID CODER  ═══"
     return [("class:tui.header", banner)]

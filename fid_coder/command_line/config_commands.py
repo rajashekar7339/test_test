@@ -66,7 +66,7 @@ def handle_show_command(command: str) -> bool:
     current_agent = get_current_agent()
     default_agent = get_default_agent()
 
-    status_msg = f"""[bold magenta]🐶 Fid Status[/bold magenta]
+    status_msg = f"""[bold magenta]◆ Fid Status[/bold magenta]
 
 [bold]fid_name:[/bold]            [cyan]{fid_name}[/cyan]
 [bold]owner_name:[/bold]            [cyan]{owner_name}[/cyan]

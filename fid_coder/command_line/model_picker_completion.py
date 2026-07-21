@@ -594,7 +594,7 @@ async def interactive_model_picker() -> Optional[str]:
 
 
 async def get_input_with_model_completion(
-    prompt_str: str = ">>> ",
+    prompt_str: str = "\u276f ",
     trigger: str = "/model",
     history_file: Optional[str] = None,
 ) -> str:

@@ -50,7 +50,7 @@ from .themes import (
 
 _INTERACTIVE_TIMEOUT_SECONDS = 300  # 5 min — generous; user is browsing
 _ACTIVE_THEME_CONFIG_KEY = "theme_active_theme"
-_DEFAULT_THEME_NAME = "tokyo-night"
+_DEFAULT_THEME_NAME = "purple-fid"
 _LEGACY_THEME_NAME = "legacy-custom"
 
 

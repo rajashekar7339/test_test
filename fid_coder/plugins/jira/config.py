@@ -11,13 +11,14 @@ Supported auth modes:
 - Cloud API token → HTTP Basic (``JIRA_EMAIL`` + ``JIRA_API_TOKEN``)
 - Bare token without email → treated as Bearer
 
-When no cookie/token is present, ``get_jira_credentials`` opens a browser
-login against ``JIRA_URL`` and saves the captured cookie into
-``authentication.json``.
+When no cookie/token is present, callers (e.g. ``read_jira_issue``) open a
+browser login against ``JIRA_URL`` and save the captured cookie into
+``authentication.json``. This module only resolves credentials.
 """
 
 from __future__ import annotations
 
+import base64
 import os
 from dataclasses import dataclass
 from typing import Optional
@@ -86,8 +87,6 @@ class JiraCredentials:
         if self.personal_token:
             return {"Authorization": f"Bearer {self.personal_token}"}
         if self.email and self.api_token:
-            import base64
-
             raw = f"{self.email}:{self.api_token}".encode("utf-8")
             encoded = base64.b64encode(raw).decode("ascii")
             return {"Authorization": f"Basic {encoded}"}
@@ -100,18 +99,17 @@ class JiraConfigError(Exception):
     """Raised when Jira credentials are missing or incomplete."""
 
 
-def get_jira_credentials(*, interactive_login: bool = True) -> JiraCredentials:
+def get_jira_credentials() -> JiraCredentials:
     """Resolve Jira credentials, raising ``JiraConfigError`` if incomplete.
 
-    When ``interactive_login`` is True and no cookie/token is available,
-    launches a headed browser against ``JIRA_URL`` so the user can SSO
-    login; the session cookie is saved to ``authentication.json``.
+    Pure resolution — never opens a browser or has other side effects.
+    Callers that need an interactive login (missing/expired cookie) should
+    go through ``session.perform_jira_login`` and re-resolve afterwards.
     """
     base_url = get_jira_url()
     if not base_url:
         raise JiraConfigError(
             "JIRA_URL is not set. Run `/jira login https://jira.<company>.com` "
-            "or `/jira set url https://jira.<company>.com` "
             "(saved under jira.url in ~/.fid_coder/authentication.json)."
         )
 
@@ -121,20 +119,10 @@ def get_jira_credentials(*, interactive_login: bool = True) -> JiraCredentials:
     personal_token = _resolve("JIRA_PERSONAL_TOKEN")
 
     if not (cookie or personal_token or api_token):
-        if not interactive_login:
-            raise JiraConfigError(
-                "No Jira credentials in ~/.fid_coder/authentication.json. "
-                "Run `/jira login` to capture a browser session cookie."
-            )
-        try:
-            from .login import ensure_jira_cookie
-
-            cookie = ensure_jira_cookie(base_url=base_url)
-        except Exception as e:
-            raise JiraConfigError(
-                f"Could not obtain Jira session cookie: {e}. "
-                "Or set JIRA_PERSONAL_TOKEN / JIRA_EMAIL+JIRA_API_TOKEN."
-            ) from e
+        raise JiraConfigError(
+            "No Jira credentials in ~/.fid_coder/authentication.json "
+            "(no jira.cookie / token). Callers should open a browser login."
+        )
 
     return JiraCredentials(
         base_url=base_url,
