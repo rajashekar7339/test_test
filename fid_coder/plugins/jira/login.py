@@ -17,18 +17,6 @@ import httpx
 from .auth import JIRA_SECTION, get_section, save_section
 from .config import get_jira_url, normalize_jira_url
 
-# Path fragments that mean the user is still on a login / SSO interstitial.
-_LOGIN_PATH_HINTS = (
-    "/login",
-    "login.jsp",
-    "samlsso",
-    "/sso/",
-    "/oauth",
-    "/identity",
-    "authgateway",
-    "adfs",
-)
-
 # How long to wait for SSO before giving up (user stays in the browser).
 _LOGIN_WAIT_TIMEOUT_S = 10 * 60
 _LOGIN_POLL_INTERVAL_S = 1.5
@@ -75,18 +63,6 @@ def _host_is_jira(page_host: str, jira_host: str) -> bool:
     if not page_host or not jira_host:
         return False
     return page_host == jira_host or page_host.endswith(f".{jira_host}")
-
-
-def _url_past_login(url: str, jira_host: str) -> bool:
-    """True when the browser is back on Jira (not the IdP / login page)."""
-    parsed = urlparse(url or "")
-    host = parsed.hostname or ""
-    if not _host_is_jira(host, jira_host):
-        return False
-    path = (parsed.path or "").lower()
-    query = (parsed.query or "").lower()
-    haystack = f"{path}?{query}"
-    return not any(hint in haystack for hint in _LOGIN_PATH_HINTS)
 
 
 def probe_session(base_url: str, cookie_header: str) -> tuple[bool, Optional[str]]:
@@ -138,10 +114,33 @@ def probe_session(base_url: str, cookie_header: str) -> tuple[bool, Optional[str
     return True, str(name)
 
 
+def _candidate_cookie_headers(context, page_host: str, jira_host: str) -> list[str]:
+    """Build Cookie header candidates to probe (deduped, non-empty)."""
+    all_cookies = context.cookies()
+    headers: list[str] = []
+    seen: set[str] = set()
+    for host in (jira_host, page_host):
+        if not host:
+            continue
+        header = _cookies_to_header(_cookies_for_host(all_cookies, host))
+        if header and header not in seen:
+            seen.add(header)
+            headers.append(header)
+    # Last resort: entire jar (SSO may set cookies under a sibling domain).
+    full = _cookies_to_header(all_cookies)
+    if full and full not in seen:
+        headers.append(full)
+    return headers
+
+
 def _wait_for_good_session(
     context, page, base_url: str, jira_host: str
 ) -> tuple[str, str]:
     """Poll until cookies prove good via ``/myself``, then return them.
+
+    ``/myself`` is the source of truth — we probe whenever cookies exist,
+    even if the browser URL still looks like an SSO path (corporate SAML
+    landings often keep ``samlsso`` in the URL after a successful login).
 
     Returns ``(cookie_header, origin)``. Raises ``RuntimeError`` on timeout.
     """
@@ -149,7 +148,6 @@ def _wait_for_good_session(
 
     deadline = time.monotonic() + _LOGIN_WAIT_TIMEOUT_S
     last_status_at = 0.0
-    last_probe_status: Optional[int] = None  # for status messages only
 
     emit_info(
         f"Waiting up to {_LOGIN_WAIT_TIMEOUT_S // 60} minutes for SSO — "
@@ -163,47 +161,57 @@ def _wait_for_good_session(
         except Exception:
             current_url = ""
 
-        past_login = _url_past_login(current_url, jira_host)
-        if past_login:
-            final_parsed = urlparse(current_url or base_url)
-            host = final_parsed.hostname or jira_host
-            host_cookies = _cookies_for_host(context.cookies(), host)
-            cookie_header = _cookies_to_header(host_cookies)
+        page_host = urlparse(current_url).hostname or ""
+        probed = False
+        probe_failed = False
 
-            if cookie_header:
-                ok, display_name = probe_session(base_url, cookie_header)
-                if ok:
-                    if final_parsed.scheme and final_parsed.netloc:
-                        origin = normalize_jira_url(
-                            f"{final_parsed.scheme}://{final_parsed.netloc}"
-                        )
-                    else:
-                        origin = normalize_jira_url(base_url)
-                    emit_info(
-                        "Good session confirmed via /myself"
-                        + (f" as {display_name}" if display_name else "")
-                        + " — closing browser."
+        for cookie_header in _candidate_cookie_headers(context, page_host, jira_host):
+            probed = True
+            ok, display_name = probe_session(base_url, cookie_header)
+            if ok:
+                final_parsed = urlparse(current_url or base_url)
+                if (
+                    final_parsed.scheme
+                    and final_parsed.netloc
+                    and _host_is_jira(final_parsed.hostname or "", jira_host)
+                ):
+                    origin = normalize_jira_url(
+                        f"{final_parsed.scheme}://{final_parsed.netloc}"
                     )
-                    return cookie_header, origin
-                last_probe_status = 401  # treated as not-yet-good
+                else:
+                    origin = normalize_jira_url(base_url)
+                emit_info(
+                    "Good session confirmed via /myself"
+                    + (f" as {display_name}" if display_name else "")
+                    + " — closing browser."
+                )
+                return cookie_header, origin
+            probe_failed = True
 
         now = time.monotonic()
         if now - last_status_at >= 15.0:
             last_status_at = now
             remaining = int(deadline - now)
-            if past_login:
+            host = page_host or "(loading)"
+            on_jira = _host_is_jira(page_host, jira_host)
+            if probe_failed:
                 emit_info(
-                    f"On Jira host — cookie present but /myself not OK yet "
-                    f"(still a bad/anonymous session). Keep finishing SSO "
+                    f"Cookies present but /myself still failing "
+                    f"(anonymous or incomplete SSO) on {host} — "
+                    f"finish login if needed ({remaining}s left)…"
+                )
+            elif on_jira and not probed:
+                emit_info(f"On Jira ({host}) but no cookies yet ({remaining}s left)…")
+            elif on_jira:
+                emit_info(
+                    f"On Jira ({host}) — waiting for a good session "
                     f"({remaining}s left)…"
                 )
             else:
-                host = urlparse(current_url).hostname or "(loading)"
                 emit_info(
-                    f"Still on SSO/login ({host}) — complete MFA if prompted "
+                    f"Still on SSO/IdP ({host}) — complete MFA if prompted "
                     f"({remaining}s left)…"
                 )
-            _ = last_probe_status  # reserved for richer status later
 
         time.sleep(_LOGIN_POLL_INTERVAL_S)
 
